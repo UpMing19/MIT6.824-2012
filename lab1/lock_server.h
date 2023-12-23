@@ -17,12 +17,12 @@ class lock_server {
 protected:
     int nacquire;
     std::mutex m_mutex;
-    std::map<lock_protocol::lockid_t , lock*> m_lockMap;
+    std::map<lock_protocol::lockid_t, lock *> m_lockMap;
 
 public:
     lock_server();
 
-    ~lock_server() ;
+    ~lock_server();
 
     lock_protocol::status stat(int clt, lock_protocol::lockid_t lid, int &);
 

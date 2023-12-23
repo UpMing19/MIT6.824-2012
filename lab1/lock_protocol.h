@@ -33,7 +33,7 @@ public:
     };
     lock_protocol::lockid_t m_lockid;
     lock_status m_lockStatus;
-    std::condition_variable  m_cv;
+    std::condition_variable m_cv;
 
     lock(lock_protocol::lockid_t lid, lock_status lockStatus);
 };

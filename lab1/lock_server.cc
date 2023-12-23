@@ -12,10 +12,12 @@ lock::lock(lock_protocol::lockid_t lid, lock_status lockStatus) {
 }
 
 lock_server::lock_server() {}
+
 lock_server::~lock_server() {
-    for(auto it = m_lockMap.begin();it!=m_lockMap.end();it++)
+    for (auto it = m_lockMap.begin(); it != m_lockMap.end(); it++)
         delete it->second;
 }
+
 lock_protocol::status
 lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r) {
     lock_protocol::status ret = lock_protocol::OK;
@@ -37,9 +39,9 @@ lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &) {
             m_lockMap[lid] = l;
             break;
         } else {
-            if (it->second->m_lockStatus != lock::FREE){
+            if (it->second->m_lockStatus != lock::FREE) {
                 it->second->m_cv.wait(uniqueLock);
-            }else{
+            } else {
                 it->second->m_lockStatus = lock::LOCKED;
                 break;
             }
@@ -58,11 +60,11 @@ lock_server::release(int clt, lock_protocol::lockid_t lid, int &) {
     if (it == m_lockMap.end()) {
         return lock_protocol::NOENT;
     } else {
-     //   uniqueLock.lock();
+        //   uniqueLock.lock();
         it->second->m_lockStatus = lock::FREE;
         it->second->m_cv.notify_all();
         //  m_lockMap.erase(it);
-       uniqueLock.unlock();
+        uniqueLock.unlock();
         return ret;
     }
 }
