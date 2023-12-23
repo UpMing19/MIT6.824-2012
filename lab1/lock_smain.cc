@@ -8,8 +8,7 @@
 
 // Main loop of lock_server
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
   int count = 0;
 
@@ -18,17 +17,19 @@ main(int argc, char *argv[])
 
   srandom(getpid());
 
-  if(argc != 2){
+  if (argc != 2)
+  {
     fprintf(stderr, "Usage: %s port\n", argv[0]);
     exit(1);
   }
 
   char *count_env = getenv("RPC_COUNT");
-  if(count_env != NULL){
+  if (count_env != NULL)
+  {
     count = atoi(count_env);
   }
 
-  //jsl_set_debug(2);
+  // jsl_set_debug(2);
 
 #ifndef RSM
   lock_server ls;
@@ -36,7 +37,6 @@ main(int argc, char *argv[])
   server.reg(lock_protocol::stat, &ls, &lock_server::stat);
 #endif
 
-
-  while(1)
+  while (1)
     sleep(1000);
 }

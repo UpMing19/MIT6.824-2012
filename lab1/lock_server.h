@@ -9,22 +9,16 @@
 #include "lock_client.h"
 #include "rpc.h"
 
-class lock_server {
+class lock_server
+{
 
- protected:
+protected:
   int nacquire;
 
- public:
+public:
   lock_server();
-  ~lock_server() {};
+  ~lock_server(){};
   lock_protocol::status stat(int clt, lock_protocol::lockid_t lid, int &);
 };
 
-#endif 
-
-
-
-
-
-
-
+#endif

@@ -2,7 +2,8 @@
 #define gettime_h
 
 #ifdef __APPLE__
-typedef enum {
+typedef enum
+{
 	CLOCK_REALTIME,
 	CLOCK_MONOTONIC,
 	CLOCK_PROCESS_CPUTIME_ID,
