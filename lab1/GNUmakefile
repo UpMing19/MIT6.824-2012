@@ -15,7 +15,7 @@ else
 MACFLAGS=
 endif
 LDFLAGS = -L. -L/usr/local/lib
-LDLIBS = -lpthread 
+LDLIBS = -lpthread
 ifeq ($(LAB2GE),1)
 ifeq ($(shell uname -s),Darwin)
 ifeq ($(shell sw_vers -productVersion | sed -e "s/.*\(10\.[0-9]\).*/\1/"),10.6)

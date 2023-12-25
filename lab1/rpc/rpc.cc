@@ -38,13 +38,13 @@
  object.  A connection object is deleted only when the underlying connection is
  dead and the reference count reaches zero.
 
- The previous version of the RPC library uses pthread_cancel* routines
- to implement the deletion of rpcc and rpcs objects. The idea is to cancel
- all active threads that might be holding a reference to an object before
+ The previous version of the RPC library uses pthread_cancel* routines 
+ to implement the deletion of rpcc and rpcs objects. The idea is to cancel 
+ all active threads that might be holding a reference to an object before 
  deleting that object. However, pthread_cancel is not robust and there are
  always bugs where outstanding references to deleted objects persist.
- This version of the RPC library does not do pthread_cancel, but explicitly
- joins exited threads to make sure no outstanding references exist before
+ This version of the RPC library does not do pthread_cancel, but explicitly 
+ joins exited threads to make sure no outstanding references exist before 
  deleting objects.
 
  To delete a rpcc object safely, the users of the library must ensure that
@@ -55,7 +55,7 @@
  3.  delete the dispatch thread pool which involves waiting for current active
  RPC handlers to finish.  It is interesting how a thread pool can be deleted
  without using thread cancellation. The trick is to inject x "poison pills" for
- a thread pool of x threads. Upon getting a poison pill instead of a normal
+ a thread pool of x threads. Upon getting a poison pill instead of a normal 
  task, a worker thread will exit (and thread pool destructor waits to join all
  x exited worker threads).
  */
@@ -69,6 +69,7 @@
 #include <netinet/tcp.h>
 #include <time.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #include "jsl_log.h"
 #include "gettime.h"
@@ -88,15 +89,16 @@ rpcc::caller::~caller() {
     VERIFY(pthread_cond_destroy(&c) == 0);
 }
 
-inline void set_rand_seed() {
+inline
+void set_rand_seed() {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     srandom((int) ts.tv_nsec ^ ((int) getpid()));
 }
 
-rpcc::rpcc(sockaddr_in d, bool retrans) : dst_(d), srv_nonce_(0), bind_done_(false), xid_(1), lossytest_(0),
-                                          retrans_(retrans), reachable_(true), chan_(NULL), destroy_wait_(false),
-                                          xid_rep_done_(-1) {
+rpcc::rpcc(sockaddr_in d, bool retrans) :
+        dst_(d), srv_nonce_(0), bind_done_(false), xid_(1), lossytest_(0),
+        retrans_(retrans), reachable_(true), chan_(NULL), destroy_wait_(false), xid_rep_done_(-1) {
     VERIFY(pthread_mutex_init(&m_, 0) == 0);
     VERIFY(pthread_mutex_init(&chan_m_, 0) == 0);
     VERIFY(pthread_cond_init(&destroy_wait_c_, 0) == 0);
@@ -137,7 +139,8 @@ rpcc::~rpcc() {
     VERIFY(pthread_mutex_destroy(&chan_m_) == 0);
 }
 
-int rpcc::bind(TO to) {
+int
+rpcc::bind(TO to) {
     int r;
     int ret = call(rpc_const::bind, 0, r, to);
     if (ret == 0) {
@@ -152,7 +155,8 @@ int rpcc::bind(TO to) {
 };
 
 // Cancel all outstanding calls
-void rpcc::cancel(void) {
+void
+rpcc::cancel(void) {
     ScopedLock ml(&m_);
     printf("rpcc::cancel: force callers to fail\n");
     std::map<int, caller *>::iterator iter;
@@ -175,8 +179,9 @@ void rpcc::cancel(void) {
     printf("rpcc::cancel: done\n");
 }
 
-int rpcc::call1(unsigned int proc, marshall &req, unmarshall &rep,
-                TO to) {
+int
+rpcc::call1(unsigned int proc, marshall &req, unmarshall &rep,
+            TO to) {
 
     caller ca(0, &rep);
     int xid_rep;
@@ -309,7 +314,8 @@ int rpcc::call1(unsigned int proc, marshall &req, unmarshall &rep,
     return (ca.done ? ca.intret : rpc_const::timeout_failure);
 }
 
-void rpcc::get_refconn(connection **ch) {
+void
+rpcc::get_refconn(connection **ch) {
     ScopedLock ml(&chan_m_);
     if (!chan_ || chan_->isdead()) {
         if (chan_)
@@ -325,12 +331,13 @@ void rpcc::get_refconn(connection **ch) {
     }
 }
 
-// PollMgr's thread is being used to
-// make this upcall from connection object to rpcc.
+// PollMgr's thread is being used to 
+// make this upcall from connection object to rpcc. 
 // this funtion must not block.
 //
-// this function keeps no reference for connection *c
-bool rpcc::got_pdu(connection *c, char *b, int sz) {
+// this function keeps no reference for connection *c 
+bool
+rpcc::got_pdu(connection *c, char *b, int sz) {
     unmarshall rep(b, sz);
     reply_header h;
     rep.unpack_reply_header(&h);
@@ -365,7 +372,8 @@ bool rpcc::got_pdu(connection *c, char *b, int sz) {
 }
 
 // assumes thread holds mutex m
-void rpcc::update_xid_rep(unsigned int xid) {
+void
+rpcc::update_xid_rep(unsigned int xid) {
     std::list<unsigned int>::iterator it;
 
     if (xid <= xid_rep_window_.front()) {
@@ -387,6 +395,7 @@ void rpcc::update_xid_rep(unsigned int xid) {
             xid_rep_window_.pop_front();
     }
 }
+
 
 rpcs::rpcs(unsigned int p1, int count)
         : port_(p1), counting_(count), curr_counts_(count), lossytest_(0), reachable_(true) {
@@ -417,7 +426,8 @@ rpcs::~rpcs() {
     free_reply_window();
 }
 
-bool rpcs::got_pdu(connection *c, char *b, int sz) {
+bool
+rpcs::got_pdu(connection *c, char *b, int sz) {
     if (!reachable_) {
         jsl_log(JSL_DBG_1, "rpcss::got_pdu: not reachable\n");
         return true;
@@ -433,14 +443,16 @@ bool rpcs::got_pdu(connection *c, char *b, int sz) {
     return succ;
 }
 
-void rpcs::reg1(unsigned int proc, handler *h) {
+void
+rpcs::reg1(unsigned int proc, handler *h) {
     ScopedLock pl(&procs_m_);
     VERIFY(procs_.count(proc) == 0);
     procs_[proc] = h;
     VERIFY(procs_.count(proc) >= 1);
 }
 
-void rpcs::updatestat(unsigned int proc) {
+void
+rpcs::updatestat(unsigned int proc) {
     ScopedLock cl(&count_m_);
     counts_[proc]++;
     curr_counts_--;
@@ -453,7 +465,7 @@ void rpcs::updatestat(unsigned int proc) {
         printf("\n");
 
         ScopedLock rwl(&reply_window_m_);
-        std::map < unsigned int, std::list < reply_t >> ::iterator
+        std::map < unsigned int, std::list < reply_t > > ::iterator
         clt;
 
         unsigned int totalrep = 0, maxrep = 0;
@@ -468,7 +480,8 @@ void rpcs::updatestat(unsigned int proc) {
     }
 }
 
-void rpcs::dispatch(djob_t *j) {
+void
+rpcs::dispatch(djob_t *j) {
     connection *c = j->conn;
     unmarshall req(j->buf, j->sz);
     delete j;
@@ -564,8 +577,7 @@ void rpcs::dispatch(djob_t *j) {
                 fprintf(stderr, "rpcs::dispatch: failed to"
                                 " unmarshall the arguments. You are"
                                 " probably calling RPC 0x%x with wrong"
-                                " types of arguments.\n",
-                        proc);
+                                " types of arguments.\n", proc);
                 VERIFY(0);
             }
             VERIFY(rh.ret >= 0);
@@ -615,8 +627,14 @@ void rpcs::dispatch(djob_t *j) {
 }
 
 // rpcs::dispatch calls this when an RPC request arrives.
+//
 // checks to see if an RPC with xid from clt_nonce has already been received.
-// if not, remembers the request.
+// if not, remembers the request in reply_window_.
+//
+// deletes remembered requests with XIDs <= xid_rep; the client
+// says it has received a reply for every RPC up through xid_rep.
+// frees the reply_t::buf of each such request.
+//
 // returns one of:
 //   NEW: never seen this xid before.
 //   INPROGRESS: seen this xid, and still processing it.
@@ -625,6 +643,7 @@ void rpcs::dispatch(djob_t *j) {
 rpcs::rpcstate_t
 rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
                                 unsigned int xid_rep, char **b, int *sz) {
+
     ScopedLock rwl(&reply_window_m_);
 
     if (reply_window_[clt_nonce].size() != 0) {
@@ -633,7 +652,7 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
         reply_window_[clt_nonce].push_back(reply_t(xid));
         return NEW;
     }
-    for (auto it = reply_window_[clt_nonce].begin(); it != reply_window_[clt_nonce].end(); ) {
+    for (auto it = reply_window_[clt_nonce].begin(); it != reply_window_[clt_nonce].end();) {
         if (it->xid < xid_rep && it->cb_present) {
             free(it->buf);
             it = reply_window_[clt_nonce].erase(it);
@@ -663,12 +682,12 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 // rpcs::dispatch calls add_reply when it is sending a reply to an RPC,
 // and passes the return value in b and sz.
 // add_reply() should remember b and sz.
-// free_reply_window() and checkduplicate_and_update is responsible for
+// free_reply_window() and checkduplicate_and_update is responsible for 
 // calling free(b).
-void rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
-                     char *b, int sz) {
+void
+rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
+                char *b, int sz) {
     ScopedLock rwl(&reply_window_m_);
-
     if (reply_window_.find(clt_nonce) == reply_window_.end()) return;
     for (auto it2 = reply_window_[clt_nonce].begin(); it2 != reply_window_[clt_nonce].end(); it2++) {
         if (it2->xid == xid) {
@@ -678,11 +697,11 @@ void rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
             return;
         }
     }
-
 }
 
-void rpcs::free_reply_window(void) {
-    std::map < unsigned int, std::list < reply_t >> ::iterator
+void
+rpcs::free_reply_window(void) {
+    std::map < unsigned int, std::list < reply_t > > ::iterator
     clt;
     std::list<reply_t>::iterator it;
 
@@ -697,13 +716,15 @@ void rpcs::free_reply_window(void) {
 }
 
 // rpc handler
-int rpcs::rpcbind(int a, int &r) {
+int
+rpcs::rpcbind(int a, int &r) {
     jsl_log(JSL_DBG_2, "rpcs::rpcbind called return nonce %u\n", nonce_);
     r = nonce_;
     return 0;
 }
 
-void marshall::rawbyte(unsigned char x) {
+void
+marshall::rawbyte(unsigned char x) {
     if (_ind >= _capa) {
         _capa *= 2;
         VERIFY(_buf != NULL);
@@ -713,7 +734,8 @@ void marshall::rawbyte(unsigned char x) {
     _buf[_ind++] = x;
 }
 
-void marshall::rawbytes(const char *p, int n) {
+void
+marshall::rawbytes(const char *p, int n) {
     if ((_ind + n) > _capa) {
         _capa = _capa > n ? 2 * _capa : (_capa + n);
         VERIFY(_buf != NULL);
@@ -741,6 +763,7 @@ operator<<(marshall &m, char x) {
     m << (unsigned char) x;
     return m;
 }
+
 
 marshall &
 operator<<(marshall &m, unsigned short x) {
@@ -785,14 +808,16 @@ operator<<(marshall &m, unsigned long long x) {
     return m;
 }
 
-void marshall::pack(int x) {
+void
+marshall::pack(int x) {
     rawbyte((x >> 24) & 0xff);
     rawbyte((x >> 16) & 0xff);
     rawbyte((x >> 8) & 0xff);
     rawbyte(x & 0xff);
 }
 
-void unmarshall::unpack(int *x) {
+void
+unmarshall::unpack(int *x) {
     (*x) = (rawbyte() & 0xff) << 24;
     (*x) |= (rawbyte() & 0xff) << 16;
     (*x) |= (rawbyte() & 0xff) << 8;
@@ -800,7 +825,8 @@ void unmarshall::unpack(int *x) {
 }
 
 // take the contents from another unmarshall object
-void unmarshall::take_in(unmarshall &another) {
+void
+unmarshall::take_in(unmarshall &another) {
     if (_buf)
         free(_buf);
     another.take_buf(&_buf, &_sz);
@@ -808,7 +834,8 @@ void unmarshall::take_in(unmarshall &another) {
     _ok = _sz >= RPC_HEADER_SZ ? true : false;
 }
 
-bool unmarshall::okdone() {
+bool
+unmarshall::okdone() {
     if (ok() && _ind == _sz) {
         return true;
     } else {
@@ -843,6 +870,7 @@ operator>>(unmarshall &u, char &x) {
     x = (char) u.rawbyte();
     return u;
 }
+
 
 unmarshall &
 operator>>(unmarshall &u, unsigned short &x) {
@@ -894,7 +922,8 @@ operator>>(unmarshall &u, std::string &s) {
     return u;
 }
 
-void unmarshall::rawbytes(std::string &ss, unsigned int n) {
+void
+unmarshall::rawbytes(std::string &ss, unsigned int n) {
     if ((_ind + n) > (unsigned) _sz) {
         _ok = false;
     } else {
@@ -912,7 +941,8 @@ bool operator<(const sockaddr_in &a, const sockaddr_in &b) {
 }
 
 /*---------------auxilary function--------------*/
-void make_sockaddr(const char *hostandport, struct sockaddr_in *dst) {
+void
+make_sockaddr(const char *hostandport, struct sockaddr_in *dst) {
 
     char host[200];
     const char *localhost = "127.0.0.1";
@@ -927,9 +957,11 @@ void make_sockaddr(const char *hostandport, struct sockaddr_in *dst) {
     }
 
     make_sockaddr(host, port, dst);
+
 }
 
-void make_sockaddr(const char *host, const char *port, struct sockaddr_in *dst) {
+void
+make_sockaddr(const char *host, const char *port, struct sockaddr_in *dst) {
 
     in_addr_t a;
 
@@ -950,7 +982,8 @@ void make_sockaddr(const char *host, const char *port, struct sockaddr_in *dst) 
     dst->sin_port = htons(atoi(port));
 }
 
-int cmp_timespec(const struct timespec &a, const struct timespec &b) {
+int
+cmp_timespec(const struct timespec &a, const struct timespec &b) {
     if (a.tv_sec > b.tv_sec)
         return 1;
     else if (a.tv_sec < b.tv_sec)
@@ -965,7 +998,8 @@ int cmp_timespec(const struct timespec &a, const struct timespec &b) {
     }
 }
 
-void add_timespec(const struct timespec &a, int b, struct timespec *result) {
+void
+add_timespec(const struct timespec &a, int b, struct timespec *result) {
     // convert to millisec, add timeout, convert back
     result->tv_sec = a.tv_sec + b / 1000;
     result->tv_nsec = a.tv_nsec + (b % 1000) * 1000000;
@@ -976,7 +1010,8 @@ void add_timespec(const struct timespec &a, int b, struct timespec *result) {
     }
 }
 
-int diff_timespec(const struct timespec &end, const struct timespec &start) {
+int
+diff_timespec(const struct timespec &end, const struct timespec &start) {
     int diff = (end.tv_sec > start.tv_sec) ? (end.tv_sec - start.tv_sec) * 1000 : 0;
     VERIFY(diff || end.tv_sec == start.tv_sec);
     if (end.tv_nsec > start.tv_nsec) {
