@@ -14,8 +14,8 @@ lock::lock(lock_protocol::lockid_t lid, lock_status lockStatus) {
 lock_server::lock_server() {}
 
 lock_server::~lock_server() {
-    for (auto it = m_lockMap.begin(); it != m_lockMap.end(); it++)
-        delete it->second;
+//    for (auto it = m_lockMap.begin(); it != m_lockMap.end(); it++)
+//        delete it->second;
 }
 
 lock_protocol::status
