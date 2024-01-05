@@ -59,6 +59,9 @@ public:
   int lookup(inum, const char *, inum &, bool *);
   int readdir(inum, std::list<dirent> &);
   
+  int setattr(inum,struct stat*);
+  int write(inum,off_t,size_t,const char *);
+  int read(inum,off_t,size_t,std::string&);
   
 
 };
