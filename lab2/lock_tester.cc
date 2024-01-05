@@ -6,19 +6,17 @@
 #include "lock_client.h"
 #include "rpc.h"
 #include "jsl_log.h"
-#include <signal.h>
 #include <arpa/inet.h>
 #include <vector>
 #include <stdlib.h>
-#include <stdio.h>
 #include <unistd.h>
+#include <stdio.h>
 #include "lang/verify.h"
-#include "lock_client_cache_rsm.h"
 
 // must be >= 2
 int nt = 6; //XXX: lab1's rpc handlers are blocking. Since rpcs uses a thread pool of 10 threads, we cannot test more than 10 blocking rpc.
 std::string dst;
-lock_client_cache_rsm **lc = new lock_client_cache_rsm * [nt];
+lock_client **lc = new lock_client * [nt];
 lock_protocol::lockid_t a = 1;
 lock_protocol::lockid_t b = 2;
 lock_protocol::lockid_t c = 3;
@@ -79,7 +77,7 @@ test1(void)
 }
 
 void *
-test2(void *x) 
+test2(void *x)
 {
   int i = * (int *) x;
 
@@ -145,21 +143,12 @@ test5(void *x)
   return 0;
 }
 
-static void
-force_exit(int) {
-    exit(0);
-}
-
 int
 main(int argc, char *argv[])
 {
     int r;
     pthread_t th[nt];
     int test = 0;
-
-    // Force the lock_server to exit after 20 minutes
-    signal(SIGALRM, force_exit);
-    alarm(20 * 60);
 
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
@@ -172,7 +161,7 @@ main(int argc, char *argv[])
       exit(1);
     }
 
-    dst = argv[1]; 
+    dst = argv[1];
 
     if (argc > 2) {
       test = atoi(argv[2]);
@@ -183,8 +172,8 @@ main(int argc, char *argv[])
     }
 
     VERIFY(pthread_mutex_init(&count_mutex, NULL) == 0);
-    printf("cache lock client\n");
-    for (int i = 0; i < nt; i++) lc[i] = new lock_client_cache_rsm(dst);
+    printf("simple lock client\n");
+    for (int i = 0; i < nt; i++) lc[i] = new lock_client(dst);
 
     if(!test || test == 1){
       test1();
@@ -204,7 +193,7 @@ main(int argc, char *argv[])
 
     if(!test || test == 3){
       printf("test 3\n");
-      
+
       // test3
       for (int i = 0; i < nt; i++) {
 	int *a = new int (i);
@@ -218,7 +207,7 @@ main(int argc, char *argv[])
 
     if(!test || test == 4){
       printf("test 4\n");
-      
+
       // test 4
       for (int i = 0; i < 2; i++) {
 	int *a = new int (i);
@@ -232,9 +221,9 @@ main(int argc, char *argv[])
 
     if(!test || test == 5){
       printf("test 5\n");
-      
+
       // test 5
-      
+
       for (int i = 0; i < nt; i++) {
 	int *a = new int (i);
 	r = pthread_create(&th[i], NULL, test5, (void *) a);

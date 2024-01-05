@@ -6,25 +6,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-lock::lock(lock_protocol::lockid_t lid):
-	    status(lock::FREE)
+lock::lock(lock_protocol::lockid_t lid, int state) : m_lid(lid), m_state(state)
 {
-	    lid = lid;
-		    pthread_cond_init(&lcond, NULL);
 }
 
-lock::lock(lock_protocol::lockid_t lid, int stat):
-	    status(stat) 
-{
-
-	    lid = lid;
-		    pthread_cond_init(&lcond, NULL);
-}
 
 lock_server::lock_server():
   nacquire (0)
 {
-	pthread_mutex_init(&mutex, NULL);
 }
 
 lock_protocol::status
@@ -39,42 +28,47 @@ lock_server::stat(int clt, lock_protocol::lockid_t lid, int &r)
 lock_protocol::status
 lock_server::acquire(int clt, lock_protocol::lockid_t lid, int &r)
 {
-	lock_protocol::status ret = lock_protocol::OK;
-	std::map<lock_protocol::lockid_t, lock* >::iterator iter;
-	pthread_mutex_lock(&mutex);
-	iter = lockmap.find(lid);
-	if(iter != lockmap.end()) {
-		while(iter->second->status != lock::FREE) {
-			pthread_cond_wait(&(iter->second->lcond), &mutex);
-		}
-		iter->second->status = lock::LOCKED;
-		pthread_mutex_unlock(&mutex);
-		return ret;
-	} else {
-		lock *new_lock = new lock(lid, lock::LOCKED);
-	//	lockmap[lid] = new_lock;
-		lockmap.insert(std::make_pair(lid, new_lock));
-		pthread_mutex_unlock(&mutex);
-		return ret;
-	}
+  lock_protocol::status ret = lock_protocol::OK;
+
+  std::unique_lock<std::mutex> lck(m_mutex);
+
+  auto iter = m_lockMap.find(lid);
+  if (iter != m_lockMap.end())
+  {
+    while(iter->second->m_state != lock::FREE)
+    {
+      iter->second->m_cv.wait(lck);
+    }
+    iter->second->m_state = lock::LOCKED;
+  }
+  else
+  {
+    // 没找到就新建一个锁
+    auto p_mutex = new lock(lid, lock::LOCKED);
+    m_lockMap.insert(std::pair<lock_protocol::lockid_t, lock*>(lid, p_mutex));
+  }
+
+  return ret;
 }
 
 lock_protocol::status
 lock_server::release(int clt, lock_protocol::lockid_t lid, int &r)
 {
-	lock_protocol::status ret = lock_protocol::OK;
-	std::map<lock_protocol::lockid_t, lock*>::iterator iter;
-	pthread_mutex_lock(&mutex);
-	iter = lockmap.find(lid);
-	if (iter != lockmap.end()) {
-		iter->second->status = lock::FREE;
-		pthread_cond_signal(&(iter->second->lcond));
-		pthread_mutex_unlock(&mutex);
-		return ret;
-	} else {
-		ret = lock_protocol::IOERR;
-		pthread_mutex_unlock(&mutex);
-		return ret;
-	}
-}
+  lock_protocol::status ret = lock_protocol::OK;
 
+  std::unique_lock<std::mutex> lck(m_mutex);
+
+  auto iter = m_lockMap.find(lid);
+  if (iter != m_lockMap.end())
+  {
+    iter->second->m_state = lock::FREE;
+    iter->second->m_cv.notify_all();
+  }
+  else
+  {
+    ret = lock_protocol::IOERR;
+  }
+
+  m_mutex.unlock();
+  return ret;
+}

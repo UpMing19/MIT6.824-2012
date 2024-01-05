@@ -6,7 +6,6 @@
 #include <list>
 #include <map>
 #include <stdio.h>
-#include <unistd.h>
 
 #include "thr_pool.h"
 #include "marshall.h"
@@ -348,7 +347,7 @@ class rpcs : public chanmgr {
 	public:
 	rpcs(unsigned int port, int counts=0);
 	~rpcs();
-        inline int port() { return listener_->port(); }
+
 	//RPC handler for clients binding
 	int rpcbind(int a, int &r);
 

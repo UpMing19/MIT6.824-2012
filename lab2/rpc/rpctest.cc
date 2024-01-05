@@ -5,9 +5,9 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <getopt.h>
-#include <unistd.h>
 #include "jsl_log.h"
 #include "gettime.h"
 #include "lang/verify.h"
@@ -260,7 +260,7 @@ simple_tests(rpcc *c)
 	printf("simple_tests OK\n");
 }
 
-void 
+void
 concurrent_test(int nt)
 {
 	// create threads that make lots of calls in parallel,
@@ -282,7 +282,7 @@ concurrent_test(int nt)
 	printf(" OK\n");
 }
 
-void 
+void
 lossy_test()
 {
 	int ret;
@@ -314,7 +314,7 @@ lossy_test()
 	VERIFY(setenv("RPC_LOSSY", "0", 1) == 0);
 }
 
-void 
+void
 failure_test()
 {
 	rpcc *client1;

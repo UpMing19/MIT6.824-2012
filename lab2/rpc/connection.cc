@@ -326,11 +326,7 @@ tcpsconn::tcpsconn(chanmgr *m1, int port, int lossytest)
 		VERIFY(0);
 	}
 
-        socklen_t addrlen = sizeof(sin);
-        VERIFY(getsockname(tcp_, (sockaddr *)&sin, &addrlen) == 0);
-        port_ = ntohs(sin.sin_port);
-
-	jsl_log(JSL_DBG_2, "tcpsconn::tcpsconn listen on %d %d\n", port_, 
+	jsl_log(JSL_DBG_2, "tcpsconn::tcpsconn listen on %d %d\n", port, 
 		sin.sin_port);
 
 	if (pipe(pipe_) < 0) {

@@ -2,7 +2,6 @@
 #define __SCOPED_LOCK__
 
 #include <pthread.h>
-#include <stdio.h>
 #include "lang/verify.h"
 struct ScopedLock {
 	private:

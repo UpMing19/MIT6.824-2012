@@ -6,10 +6,18 @@
 #include <string>
 #include <map>
 #include "extent_protocol.h"
+#include <mutex>
 
-class extent_server {
+class extent_server
+{
 
- public:
+  struct extent
+  {
+    std::string data;
+    extent_protocol::attr attr;
+  };
+
+public:
   extent_server();
 
   int put(extent_protocol::extentid_t id, std::string, int &);
@@ -17,13 +25,10 @@ class extent_server {
   int getattr(extent_protocol::extentid_t id, extent_protocol::attr &);
   int remove(extent_protocol::extentid_t id, int &);
 
+public:
+  std::map<extent_protocol::extentid_t, extent> file_map;
+  std::mutex m_mutex;
+  
 };
 
-#endif 
-
-
-
-
-
-
-
+#endif

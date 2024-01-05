@@ -3,6 +3,9 @@
 #ifndef lock_protocol_h
 #define lock_protocol_h
 
+#include <mutex>
+#include <condition_variable>
+
 #include "rpc.h"
 
 class lock_protocol {
@@ -10,7 +13,6 @@ class lock_protocol {
   enum xxstatus { OK, RETRY, RPCERR, NOENT, IOERR };
   typedef int status;
   typedef unsigned long long lockid_t;
-  typedef unsigned long long xid_t;
   enum rpc_numbers {
     acquire = 0x7001,
     release,
@@ -18,25 +20,19 @@ class lock_protocol {
   };
 };
 
-class rlock_protocol {
- public:
-  enum xxstatus { OK, RPCERR };
-  typedef int status;
-  enum rpc_numbers {
-    revoke = 0x8001,
-    retry = 0x8002
-  };
+// 锁类
+class lock {
+public:
+  enum lock_status {FREE, LOCKED};
+  // 用这个来标识每个锁
+  lock_protocol::lockid_t m_lid;
+  // FREE or LOCKED
+  int m_state;
+  // 条件变量
+  std::condition_variable m_cv;
+
+  // 构造函数
+  lock(lock_protocol::lockid_t lid, int state);
 };
 
-class lock {
- public: 
-    enum lock_status {FREE, LOCKED};
-	lock_protocol::lockid_t lid;
-	int status;
-	pthread_cond_t lcond;
-														      
-	lock(lock_protocol::lockid_t);
-	lock(lock_protocol::lockid_t, int);
-	~lock(){};
-};
 #endif 

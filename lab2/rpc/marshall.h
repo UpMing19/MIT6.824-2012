@@ -220,7 +220,6 @@ operator<<(marshall &m, std::vector<C> v)
 template <class C> unmarshall &
 operator>>(unmarshall &u, std::vector<C> &v)
 {
-        v.clear();
 	unsigned n;
 	u >> n;
 	for(unsigned i = 0; i < n; i++){
