@@ -1,0 +1,1 @@
+Usage: ./lock_server [master:]port [me:]port
