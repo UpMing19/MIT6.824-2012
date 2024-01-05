@@ -123,38 +123,69 @@ int yfs_client::create(inum parent, const char *name, inum &inum)
   return r;
 }
 
- int  yfs_client::lookup(inum parent, const char *name, inum &inum, bool *found){
-      int r = xxstatus::OK;
+int yfs_client::lookup(inum parent, const char *name, inum &inum, bool *found)
+{
+  int r = xxstatus::OK;
 
-      std::string dir_data;
-      std::string file_name;
-      std::string ino;
-      if(ec->get(parent,dir_data)!=extent_protocol::OK){
-        r = IOERR;
-        return r;
-      }
-      file_name = "/" + std::string(name) + "/";
-      if(dir_data.find(file_name)==std::string::npos){
-        r = IOERR;
-        return r;
-      }
-
-      size_t pos ,end;
-      pos = dir_data.find(file_name);
-      *found = true;
-      pos+=file_name.size();
-      end = dir_data.find_first_of("/",pos);
-      if(end!=std::string::npos){
-          ino = dir_data.substr(pos,end-pos);
-          inum = n2i(ino.c_str());
-      }
-      else{
-        r = IOERR;
-        return r;
-      }
-  return r;
- }
-  int  yfs_client::readdir(inum, std::list<dirent> &){
-    
+  std::string dir_data;
+  std::string file_name;
+  std::string ino;
+  if (ec->get(parent, dir_data) != extent_protocol::OK)
+  {
+    r = IOERR;
+    return r;
   }
-  
+  file_name = "/" + std::string(name) + "/";
+  if (dir_data.find(file_name) == std::string::npos)
+  {
+    r = IOERR;
+    return r;
+  }
+
+  size_t pos, end;
+  pos = dir_data.find(file_name);
+  *found = true;
+  pos += file_name.size();
+  end = dir_data.find_first_of("/", pos);
+  if (end != std::string::npos)
+  {
+    ino = dir_data.substr(pos, end - pos);
+    inum = n2i(ino.c_str());
+  }
+  else
+  {
+    r = IOERR;
+    return r;
+  }
+  return r;
+}
+int yfs_client::readdir(inum inum, std::list<dirent> &dirents)
+{
+  int r = xxstatus::OK;
+  std::string dir_data;
+  std::string inum_str;
+  size_t pos, name_end, name_len, inum_end, inum_len;
+  if (ec->get(inum, dir_data) != extent_protocol::OK)
+  {
+    r = IOERR;
+    return r;
+  }
+
+  pos = 0;
+  while (pos != dir_data.size())
+  {
+    dirent entry;
+    pos = dir_data.find_first_of("/", pos);
+    if (pos == dir_data.size())
+      break;
+    name_end = dir_data.find_first_of("/", pos + 1);
+    entry.name = dir_data.substr(pos + 1, name_end - pos - 1);
+
+    inum_end = dir_data.find_first_of("/", name_end + 1);
+    inum_str = dir_data.substr(name_end + 1, inum_end - name_end - 1);
+    entry.inum = n2i(inum_str.c_str());
+    dirents.push_back(entry);
+    pos = inum_end + 1;
+  }
+  return r;
+}
