@@ -38,7 +38,7 @@
     int yfs_client::write(inum inum, off_t off, size_t size, const char *buf)
     如果off+size超过filesize需要扩容然后从off出写size个字节进
     int yfs_client::read(inum inum, off_t off, size_t size, std::string &buf)
-    使用循环读即可，注意不足size的时候返回剩余的可用字节
+    从off处读取size个字符，注意不足size的时候返回剩余的可用字符
     int yfs_client::setattr(inum inum, struct stat *attr)
     get出来后设置文件大小然后resize重新put即可
 
