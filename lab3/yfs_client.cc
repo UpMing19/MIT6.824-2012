@@ -10,11 +10,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-
 }
 
 yfs_client::inum
@@ -34,22 +32,19 @@ yfs_client::filename(inum inum)
   return ost.str();
 }
 
-bool
-yfs_client::isfile(inum inum)
+bool yfs_client::isfile(inum inum)
 {
-  if(inum & 0x80000000)
+  if (inum & 0x80000000)
     return true;
   return false;
 }
 
-bool
-yfs_client::isdir(inum inum)
+bool yfs_client::isdir(inum inum)
 {
-  return ! isfile(inum);
+  return !isfile(inum);
 }
 
-int
-yfs_client::getfile(inum inum, fileinfo &fin)
+int yfs_client::getfile(inum inum, fileinfo &fin)
 {
   int r = OK;
   // You modify this function for Lab 3
@@ -57,7 +52,8 @@ yfs_client::getfile(inum inum, fileinfo &fin)
 
   printf("getfile %016llx\n", inum);
   extent_protocol::attr a;
-  if (ec->getattr(inum, a) != extent_protocol::OK) {
+  if (ec->getattr(inum, a) != extent_protocol::OK)
+  {
     r = IOERR;
     goto release;
   }
@@ -68,13 +64,12 @@ yfs_client::getfile(inum inum, fileinfo &fin)
   fin.size = a.size;
   printf("getfile %016llx -> sz %llu\n", inum, fin.size);
 
- release:
+release:
 
   return r;
 }
 
-int
-yfs_client::getdir(inum inum, dirinfo &din)
+int yfs_client::getdir(inum inum, dirinfo &din)
 {
   int r = OK;
   // You modify this function for Lab 3
@@ -82,7 +77,8 @@ yfs_client::getdir(inum inum, dirinfo &din)
 
   printf("getdir %016llx\n", inum);
   extent_protocol::attr a;
-  if (ec->getattr(inum, a) != extent_protocol::OK) {
+  if (ec->getattr(inum, a) != extent_protocol::OK)
+  {
     r = IOERR;
     goto release;
   }
@@ -90,7 +86,7 @@ yfs_client::getdir(inum inum, dirinfo &din)
   din.mtime = a.mtime;
   din.ctime = a.ctime;
 
- release:
+release:
   return r;
 }
 
@@ -103,12 +99,11 @@ yfs_client::random_inum(bool isfile)
   return ret;
 }
 
-int
-yfs_client::create(inum parent, const char* name, inum& inum)
+int yfs_client::create(inum parent, const char *name, inum &inum)
 {
   std::string data;
   std::string file_name;
-  if(ec->get(parent, data) != extent_protocol::OK)
+  if (ec->get(parent, data) != extent_protocol::OK)
   {
     return IOERR;
   }
@@ -121,13 +116,13 @@ yfs_client::create(inum parent, const char* name, inum& inum)
   }
 
   inum = random_inum(true);
-  if(ec->put(inum, std::string()) != extent_protocol::OK)
+  if (ec->put(inum, std::string()) != extent_protocol::OK)
   {
     return IOERR;
   }
 
   data.append(file_name + filename(inum) + "/");
-  if(ec->put(parent, data) != extent_protocol::OK)
+  if (ec->put(parent, data) != extent_protocol::OK)
   {
     return IOERR;
   }
@@ -135,25 +130,24 @@ yfs_client::create(inum parent, const char* name, inum& inum)
   return OK;
 }
 
-int
-yfs_client::lookup(inum parent, const char* name, inum& inum, bool* found)
+int yfs_client::lookup(inum parent, const char *name, inum &inum, bool *found)
 {
   size_t pos, end;
   std::string data, file_name, ino;
 
-  if(ec->get(parent, data) != extent_protocol::OK)
+  if (ec->get(parent, data) != extent_protocol::OK)
   {
     return IOERR;
   }
 
   file_name = "/" + std::string(name) + "/";
   pos = data.find(file_name);
-  if(pos != std::string::npos)
+  if (pos != std::string::npos)
   {
     *found = true;
     pos += file_name.size();
     end = data.find_first_of("/", pos);
-    if(end != std::string::npos)
+    if (end != std::string::npos)
     {
       ino = data.substr(pos, end - pos);
       inum = n2i(ino.c_str());
@@ -171,34 +165,32 @@ yfs_client::lookup(inum parent, const char* name, inum& inum, bool* found)
   return OK;
 }
 
-int
-yfs_client::readdir(inum inum, std::list<dirent> & dirents)
+int yfs_client::readdir(inum inum, std::list<dirent> &dirents)
 {
   std::string data, inum_str;
   size_t pos, name_end, name_len, inum_end, inum_len;
-  if(ec->get(inum, data) != extent_protocol::OK)
+  if (ec->get(inum, data) != extent_protocol::OK)
   {
     return IOERR;
   }
 
   pos = 0;
-  while(pos != data.size())
+  while (pos != data.size())
   {
     dirent d;
     pos = data.find("/", pos);
-    if(pos == std::string::npos)
+    if (pos == std::string::npos)
     {
       break;
     }
 
-    name_end = data.find_first_of("/", pos+1);
+    name_end = data.find_first_of("/", pos + 1);
     name_len = name_end - pos - 1;
-    d.name = data.substr(pos+1, name_len);
-
+    d.name = data.substr(pos + 1, name_len);
 
     inum_end = data.find_first_of("/", name_end + 1);
     inum_len = inum_end - inum_end - 1;
-    inum_str = data.substr(name_end+1, inum_len);
+    inum_str = data.substr(name_end + 1, inum_len);
 
     d.inum = n2i(inum_str.c_str());
     dirents.push_back(d);
@@ -208,20 +200,18 @@ yfs_client::readdir(inum inum, std::list<dirent> & dirents)
   return OK;
 }
 
-
-int
-yfs_client::setattr(inum inum, struct stat* attr)
+int yfs_client::setattr(inum inum, struct stat *attr)
 {
   size_t size = attr->st_size;
   std::string buf;
-  if(ec->get(inum, buf) != extent_protocol::OK)
+  if (ec->get(inum, buf) != extent_protocol::OK)
   {
-    return IOERR;    
+    return IOERR;
   }
 
   buf.resize(size, '\0');
 
-  if(ec->put(inum, buf) != extent_protocol::OK)
+  if (ec->put(inum, buf) != extent_protocol::OK)
   {
     return IOERR;
   }
@@ -229,23 +219,22 @@ yfs_client::setattr(inum inum, struct stat* attr)
   return OK;
 }
 
-int
-yfs_client::read(inum inum, off_t off, size_t size, std::string &buf)
+int yfs_client::read(inum inum, off_t off, size_t size, std::string &buf)
 {
   std::string data;
   size_t read_size;
-  if(ec->get(inum, data) != extent_protocol::OK)
+  if (ec->get(inum, data) != extent_protocol::OK)
   {
     return IOERR;
   }
 
-  if(off >= data.size())
+  if (off >= data.size())
   {
     buf = std::string();
   }
 
   read_size = size;
-  if(off + size > data.size())
+  if (off + size > data.size())
   {
     read_size = data.size() - off;
   }
@@ -254,31 +243,97 @@ yfs_client::read(inum inum, off_t off, size_t size, std::string &buf)
   return OK;
 }
 
-int
-yfs_client::write(inum inum, off_t off, size_t size, const char *buf)
+int yfs_client::write(inum inum, off_t off, size_t size, const char *buf)
 {
   std::string data;
-  if(ec->get(inum, data) != extent_protocol::OK)
+  if (ec->get(inum, data) != extent_protocol::OK)
   {
     return IOERR;
   }
 
-  if(size + off > data.size())
+  if (size + off > data.size())
   {
     data.resize(size + off, '\0');
   }
 
-  for(size_t i = 0; i < size; i++)
+  for (size_t i = 0; i < size; i++)
   {
-    data[off+i] = buf[i];
+    data[off + i] = buf[i];
   }
 
-  if(ec->put(inum, data) != extent_protocol::OK)
+  if (ec->put(inum, data) != extent_protocol::OK)
   {
     return IOERR;
   }
 
-  return OK; 
+  return OK;
 }
 
+int yfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &inum)
+{
+  std::string dir_data;
+  if (ec->get(parent, dir_data) != extent_protocol::OK)
+  {
+    return IOERR;
+  }
+  std::string file_name;
+  file_name = "/" + std::string(name) + "/";
+  if (dir_data.find(file_name) != std::string::npos)
+  {
+    return EXIST;
+  }
+  inum = random_inum(false);
+  if (ec->put(inum, std::string()) != extent_protocol::OK)
+  {
+    return IOERR;
+  }
+  std::string inum2 = filename(inum);
+  file_name = file_name + inum2 + '/';
+  dir_data.append(file_name);
+  if (ec->put(parent, dir_data) != extent_protocol::OK)
+  {
+    return IOERR;
+  }
+  return OK;
+}
+int yfs_client::unlink(inum parent, const char *name)
+{
+  std::string dir_data;
+  if (ec->get(parent, dir_data) != extent_protocol::OK)
+  {
+    return IOERR;
+  }
+  std::string file_name;
+  file_name = "/" + std::string(name) + "/";
+  if (dir_data.find(file_name) == std::string::npos)
+  {
+    return NOENT;
+  }
+  int pos = dir_data.find(file_name);
+  int nameend = pos + file_name.size() - 1;
+  if (dir_data.find_first_of("/", nameend + 1) == std::string::npos)
+  {
+    return NOENT;
+  }
+  int inumend = dir_data.find_first_of("/", nameend + 1);
 
+  std::string inumtemp = dir_data.substr(nameend + 1, inumend - nameend - 1);
+
+  inum inum = n2i(inumtemp.c_str());
+
+  if (!isfile(inum))
+  {
+    return IOERR;
+  }
+
+  dir_data.erase(pos, inumend - pos + 1);
+  if (ec->put(parent, dir_data) != extent_protocol::OK)
+  {
+    return IOERR;
+  }
+  if (ec->remove(inum) != extent_protocol::OK)
+  {
+    return IOERR;
+  }
+  return OK;
+}
