@@ -13,6 +13,7 @@
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
+  lc = new lock_client(lock_dst);
 }
 
 yfs_client::inum
@@ -93,6 +94,7 @@ release:
 yfs_client::inum
 yfs_client::random_inum(bool isfile)
 {
+
   inum ret = (unsigned long long)((rand() & 0x7fffffff) | (isfile << 31));
   ret = 0xffffffff & ret;
 
@@ -101,6 +103,7 @@ yfs_client::random_inum(bool isfile)
 
 int yfs_client::create(inum parent, const char *name, inum &inum)
 {
+  LockGuard lg(lc, parent);
   std::string data;
   std::string file_name;
   if (ec->get(parent, data) != extent_protocol::OK)
@@ -202,6 +205,7 @@ int yfs_client::readdir(inum inum, std::list<dirent> &dirents)
 
 int yfs_client::setattr(inum inum, struct stat *attr)
 {
+  LockGuard lg(lc, inum);
   size_t size = attr->st_size;
   std::string buf;
   if (ec->get(inum, buf) != extent_protocol::OK)
@@ -245,6 +249,7 @@ int yfs_client::read(inum inum, off_t off, size_t size, std::string &buf)
 
 int yfs_client::write(inum inum, off_t off, size_t size, const char *buf)
 {
+  LockGuard lg(lc, inum);
   std::string data;
   if (ec->get(inum, data) != extent_protocol::OK)
   {
@@ -271,6 +276,7 @@ int yfs_client::write(inum inum, off_t off, size_t size, const char *buf)
 
 int yfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &inum)
 {
+  LockGuard lg(lc, parent);
   std::string dir_data;
   if (ec->get(parent, dir_data) != extent_protocol::OK)
   {
@@ -298,6 +304,7 @@ int yfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &inum)
 }
 int yfs_client::unlink(inum parent, const char *name)
 {
+  LockGuard lg(lc, parent);
   std::string dir_data;
   if (ec->get(parent, dir_data) != extent_protocol::OK)
   {

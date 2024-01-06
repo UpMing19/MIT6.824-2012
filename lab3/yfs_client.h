@@ -8,10 +8,12 @@
 
 #include "lock_protocol.h"
 #include "lock_client.h"
+#include <map>
 
 class yfs_client
 {
   extent_client *ec;
+  lock_client *lc;
 
 public:
   typedef unsigned long long inum;
@@ -66,8 +68,25 @@ public:
   int read(inum, off_t, size_t, std::string &);
   int write(inum, off_t, size_t, const char *);
 
-  int mkdir(inum, const char *,mode_t, inum &);
+  int mkdir(inum, const char *, mode_t, inum &);
   int unlink(inum, const char *);
+
+  class LockGuard
+  {
+  private:
+    lock_client *lc;
+    lock_protocol::lockid_t id;
+
+  public:
+    LockGuard(lock_client *lc, lock_protocol::lockid_t id) : lc(lc), id(id)
+    {
+      lc->acquire(id);
+    }
+    ~LockGuard()
+    {
+      lc->release(id);
+    }
+  };
 };
 
 #endif
