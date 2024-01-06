@@ -3448,3 +3448,226 @@ getattr 0000000000000001 0
 getdir 0000000000000001
    getattr -> 1704490717 1704490717 1704490717
    unique: 898, success, outsize: 120
+unique: 899, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 3266
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704490746 1704490717 1704490717
+   unique: 899, success, outsize: 120
+unique: 900, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 22158
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704490746 1704490717 1704490717
+   unique: 900, success, outsize: 120
+unique: 901, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 22158
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704490746 1704490717 1704490717
+   unique: 901, success, outsize: 120
+unique: 902, opcode: OPENDIR (27), nodeid: 1, insize: 48, pid: 22158
+   unique: 902, success, outsize: 32
+unique: 903, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 22158
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704490746 1704490717 1704490717
+   unique: 903, success, outsize: 120
+unique: 904, opcode: READDIR (28), nodeid: 1, insize: 80, pid: 22158
+fuseserver_readdir
+   unique: 904, success, outsize: 464
+unique: 905, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000fb89aa35 1
+getfile 00000000fb89aa35
+getfile 00000000fb89aa35 -> sz 65553
+   getattr -> 65553
+   unique: 905, success, outsize: 144
+unique: 906, opcode: GETATTR (3), nodeid: 4220103221, insize: 56, pid: 22158
+getattr 00000000fb89aa35 1
+getfile 00000000fb89aa35
+getfile 00000000fb89aa35 -> sz 65553
+   getattr -> 65553
+   unique: 906, success, outsize: 120
+unique: 907, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000cc23a27e 1
+getfile 00000000cc23a27e
+getfile 00000000cc23a27e -> sz 4111
+   getattr -> 4111
+   unique: 907, success, outsize: 144
+unique: 908, opcode: GETATTR (3), nodeid: 3424887422, insize: 56, pid: 22158
+getattr 00000000cc23a27e 1
+getfile 00000000cc23a27e
+getfile 00000000cc23a27e -> sz 4111
+   getattr -> 4111
+   unique: 908, success, outsize: 120
+unique: 909, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000a88af72a 1
+getfile 00000000a88af72a
+getfile 00000000a88af72a -> sz 65553
+   getattr -> 65553
+   unique: 909, success, outsize: 144
+unique: 910, opcode: GETATTR (3), nodeid: 2827679530, insize: 56, pid: 22158
+getattr 00000000a88af72a 1
+getfile 00000000a88af72a
+getfile 00000000a88af72a -> sz 65553
+   getattr -> 65553
+   unique: 910, success, outsize: 120
+unique: 911, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000af812727 1
+getfile 00000000af812727
+getfile 00000000af812727 -> sz 4111
+   getattr -> 4111
+   unique: 911, success, outsize: 144
+unique: 912, opcode: GETATTR (3), nodeid: 2944476967, insize: 56, pid: 22158
+getattr 00000000af812727 1
+getfile 00000000af812727
+getfile 00000000af812727 -> sz 4111
+   getattr -> 4111
+   unique: 912, success, outsize: 120
+unique: 913, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000fc08d47c 1
+getfile 00000000fc08d47c
+getfile 00000000fc08d47c -> sz 65553
+   getattr -> 65553
+   unique: 913, success, outsize: 144
+unique: 914, opcode: GETATTR (3), nodeid: 4228437116, insize: 56, pid: 22158
+getattr 00000000fc08d47c 1
+getfile 00000000fc08d47c
+getfile 00000000fc08d47c -> sz 65553
+   getattr -> 65553
+   unique: 914, success, outsize: 120
+unique: 915, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000bbc75518 1
+getfile 00000000bbc75518
+getfile 00000000bbc75518 -> sz 4111
+   getattr -> 4111
+   unique: 915, success, outsize: 144
+unique: 916, opcode: GETATTR (3), nodeid: 3150402840, insize: 56, pid: 22158
+getattr 00000000bbc75518 1
+getfile 00000000bbc75518
+getfile 00000000bbc75518 -> sz 4111
+   getattr -> 4111
+   unique: 916, success, outsize: 120
+unique: 917, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000f0c691be 1
+getfile 00000000f0c691be
+getfile 00000000f0c691be -> sz 65553
+   getattr -> 65553
+   unique: 917, success, outsize: 144
+unique: 918, opcode: GETATTR (3), nodeid: 4039545278, insize: 56, pid: 22158
+getattr 00000000f0c691be 1
+getfile 00000000f0c691be
+getfile 00000000f0c691be -> sz 65553
+   getattr -> 65553
+   unique: 918, success, outsize: 120
+unique: 919, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 000000008bc2b53a 1
+getfile 000000008bc2b53a
+getfile 000000008bc2b53a -> sz 4111
+   getattr -> 4111
+   unique: 919, success, outsize: 144
+unique: 920, opcode: GETATTR (3), nodeid: 2344793402, insize: 56, pid: 22158
+getattr 000000008bc2b53a 1
+getfile 000000008bc2b53a
+getfile 000000008bc2b53a -> sz 4111
+   getattr -> 4111
+   unique: 920, success, outsize: 120
+unique: 921, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000d238eb8f 1
+getfile 00000000d238eb8f
+getfile 00000000d238eb8f -> sz 65553
+   getattr -> 65553
+   unique: 921, success, outsize: 144
+unique: 922, opcode: GETATTR (3), nodeid: 3526945679, insize: 56, pid: 22158
+getattr 00000000d238eb8f 1
+getfile 00000000d238eb8f
+getfile 00000000d238eb8f -> sz 65553
+   getattr -> 65553
+   unique: 922, success, outsize: 120
+unique: 923, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000a0b0d49e 1
+getfile 00000000a0b0d49e
+getfile 00000000a0b0d49e -> sz 4111
+   getattr -> 4111
+   unique: 923, success, outsize: 144
+unique: 924, opcode: GETATTR (3), nodeid: 2695943326, insize: 56, pid: 22158
+getattr 00000000a0b0d49e 1
+getfile 00000000a0b0d49e
+getfile 00000000a0b0d49e -> sz 4111
+   getattr -> 4111
+   unique: 924, success, outsize: 120
+unique: 925, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000b861895a 1
+getfile 00000000b861895a
+getfile 00000000b861895a -> sz 65553
+   getattr -> 65553
+   unique: 925, success, outsize: 144
+unique: 926, opcode: GETATTR (3), nodeid: 3093399898, insize: 56, pid: 22158
+getattr 00000000b861895a 1
+getfile 00000000b861895a
+getfile 00000000b861895a -> sz 65553
+   getattr -> 65553
+   unique: 926, success, outsize: 120
+unique: 927, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000d921a7ab 1
+getfile 00000000d921a7ab
+getfile 00000000d921a7ab -> sz 4111
+   getattr -> 4111
+   unique: 927, success, outsize: 144
+unique: 928, opcode: GETATTR (3), nodeid: 3642861483, insize: 56, pid: 22158
+getattr 00000000d921a7ab 1
+getfile 00000000d921a7ab
+getfile 00000000d921a7ab -> sz 4111
+   getattr -> 4111
+   unique: 928, success, outsize: 120
+unique: 929, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000d923b1ba 1
+getfile 00000000d923b1ba
+getfile 00000000d923b1ba -> sz 65553
+   getattr -> 65553
+   unique: 929, success, outsize: 144
+unique: 930, opcode: GETATTR (3), nodeid: 3642995130, insize: 56, pid: 22158
+getattr 00000000d923b1ba 1
+getfile 00000000d923b1ba
+getfile 00000000d923b1ba -> sz 65553
+   getattr -> 65553
+   unique: 930, success, outsize: 120
+unique: 931, opcode: LOOKUP (1), nodeid: 1, insize: 47, pid: 22158
+getattr 00000000938cd9c7 1
+getfile 00000000938cd9c7
+getfile 00000000938cd9c7 -> sz 4111
+   getattr -> 4111
+   unique: 931, success, outsize: 144
+unique: 932, opcode: GETATTR (3), nodeid: 2475481543, insize: 56, pid: 22158
+getattr 00000000938cd9c7 1
+getfile 00000000938cd9c7
+getfile 00000000938cd9c7 -> sz 4111
+   getattr -> 4111
+   unique: 932, success, outsize: 120
+unique: 933, opcode: READDIR (28), nodeid: 1, insize: 80, pid: 22158
+fuseserver_readdir
+   unique: 933, success, outsize: 16
+unique: 934, opcode: RELEASEDIR (29), nodeid: 1, insize: 64, pid: 0
+   unique: 934, success, outsize: 16
+unique: 935, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 3264
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704543797 1704490717 1704490717
+   unique: 935, success, outsize: 120
+unique: 936, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 3266
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704543872 1704490717 1704490717
+   unique: 936, success, outsize: 120
+unique: 937, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 3265
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704543878 1704490717 1704490717
+   unique: 937, success, outsize: 120
+unique: 938, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 3264
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704543900 1704490717 1704490717
+   unique: 938, success, outsize: 120
+unique: 939, opcode: GETATTR (3), nodeid: 1, insize: 56, pid: 3265
+getattr 0000000000000001 0
+getdir 0000000000000001
+   getattr -> 1704543928 1704490717 1704490717
+   unique: 939, success, outsize: 120
