@@ -38,6 +38,18 @@ public:
                                         int &);
   rlock_protocol::status retry_handler(lock_protocol::lockid_t,
                                        int &);
+
+private:
+  enum client_status
+  {
+    NONE,
+    FREE,
+    LOCKED,
+    ACQUIRING,
+    RELEASING
+  };
+client_status m_client_status;
+
 };
 
 #endif

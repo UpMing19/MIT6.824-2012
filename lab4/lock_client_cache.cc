@@ -30,14 +30,16 @@ lock_protocol::status
 lock_client_cache::acquire(lock_protocol::lockid_t lid)
 {
   int ret = lock_protocol::OK;
-
-  return lock_protocol::OK;
+  ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
+  return ret;
 }
 
 lock_protocol::status
 lock_client_cache::release(lock_protocol::lockid_t lid)
 {
-  return lock_protocol::OK;
+  int ret = lock_protocol::OK;
+  ret = cl->call(lock_protocol::release, cl->id(), lid, r);
+  return ret;
 }
 
 rlock_protocol::status
@@ -45,6 +47,7 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
                                   int &)
 {
   int ret = rlock_protocol::OK;
+  lu->dorelease(lid);
   return ret;
 }
 
@@ -53,5 +56,6 @@ lock_client_cache::retry_handler(lock_protocol::lockid_t lid,
                                  int &)
 {
   int ret = rlock_protocol::OK;
+
   return ret;
 }
