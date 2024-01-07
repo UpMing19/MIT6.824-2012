@@ -30,6 +30,7 @@ lock_protocol::status
 lock_client_cache::acquire(lock_protocol::lockid_t lid)
 {
   int ret = lock_protocol::OK;
+
   return lock_protocol::OK;
 }
 
