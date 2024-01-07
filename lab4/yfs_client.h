@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "lock_protocol.h"
-#include "lock_client.h"
+#include "lock_client_cache.h"
 
 
 class yfs_client {

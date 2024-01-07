@@ -1,73 +1,43 @@
-# MKDIR, UNLINK, and Locking
-继续完善上一次实验的文件系统服务。
+# LBA4 lock cache
+## INTRO:
+  在之前的lab，如果1个yfs-client对一个目录添加文件100次，那么锁就 acquire 和 release 100次，出现不必要的性能开销，所以选择 将锁 缓存在客户端，当使用结束后并不立即release ，当有其他客户端使用的时候在release
 
-## Part1：MKDIR, UNLINK
-这一部分与上一次实验完成的内容差不多，有了前面的理解，这一部分很简单。
+## NEW
 
+### lock_client_cache.{cc,h}  
+    代替lock_client类,你应该在yfs-client 和 locketester 中实例化新的，他记录随机一个port用来监听服务器的rpc请求（revoke和retry）
 
-## Part2：Locking
-最简单的方法就是为整个文件系统提供单个锁，或是锁定整个目录，但这些都不好。
+### lock_server_cache.{cc,h}
+    注册新的rpc请求
+### handle.{cc,h} 和 tprintf.h:
+    处理函数和DEBUG
+## 设计要求
+###  状态
+1. NONE(客户端不知道这个锁)
 
-锁应该与每个内容相关联，使用文件或目录的`inum`作为锁的名称，利用之前在`lock_client`的实现，每个`yfs_client`都有一个`lock_client`。
-```cpp
-class yfs_client {
-  extent_client *ec;
-  lock_client *m_lc;
-public:
-  ...
-```
+2. FREE(某客户端持有锁，但是没有线程占用)
 
-
-而在CREATE等方法中如果直接使用`m_lc`的话会比较繁杂，可以自己实现一个锁类，采用RAII(资源获取即初始化)，
-类似于标准库中的`lock_guard`。
-```cpp
-class LockGuard {
-public:
-  LockGuard(lock_client *lc, lock_protocol::lockid_t lid) : m_lc(lc), m_lid(lid)
-  {
-    m_lc->acquire(m_lid);
-  }
-
-  ~LockGuard()
-  {
-    m_lc->release(m_lid);
-  }
-private:
-  lock_client *m_lc;
-  lock_protocol::lockid_t m_lid;
-};
-```
+3. LOCKED(某客户端持有锁，而且某个线程正在使用)
 
 
-## 测试
-### Part1
-```shell
-$ ./test-lab-3-a.pl ./yfs1
-mkdir ./yfs1/d14527
-create x-0
-delete x-0
-create x-1
-checkmtime x-1
-checkdirmtime
-...
-...
-Passed all tests!
-```
-### Part2
-```shell
-$ ./test-lab-3-b ./yfs1 ./yfs2
-Create then read: OK
-Unlink: OK
-Append: OK
-Readdir: OK
-Many sequential creates: OK
-Write 20000 bytes: OK
-Concurrent creates: OK
-Concurrent creates of the same file: OK
-Concurrent create/delete: OK
-Concurrent creates, same file, same server: OK
-Concurrent writes to different parts of same file: OK
-test-lab-3-b: Passed all tests.
-$ ./test-lab-3-c ./yfs1 ./yfs2
-Create/delete in separate directories: tests completed OK
-```
+4. ACQUIRING(正在获取锁)
+
+5. RELEASEING(正在释放锁)
+
+
+#### 1.如果一个客户端有多个线程，那么同一时间只能有一个线程占有锁，其他线程必须等待，当锁释放后（又或者锁被撤销（revoke）回服务器），唤醒等待的线程，才能获取锁
+     如果需要标记线程id，可以tid = pthread_self();
+#### 2A.  当锁FREE且在server的时候（不被其他client占有），client像server发送acquire请求，server回复OK，并且client占有锁
+
+#### 2B.  当锁被不是FREE，被一个client占有且有别的client正在等待，这个时候发送acquire请求，server回复RETRY，稍后再试
+#### 2C.  除以上情况外（锁在client但是没有其他client等待），这个时候发送acquire请求，server像持有锁的client发送REVOKE，等待锁被释放，最后再给正在等待客户端并return RETRY然后再return OK;
+
+
+#### 3. client拿到锁时候会缓存锁，用完之后不给server发release，当同一个client的另一个线程用锁的时候，不需要与server交互就可以持有锁
+
+
+#### 4.server通过发送revoke请求给client告诉他有别的client需要锁，当没有线程占用锁的时候，立即release锁给server
+
+
+#### 5.服务器需要记录锁是否被持有且持有锁的每个client的ip:port（用来发送rpc请求） 和 正在等待client（给他们回复RETRY）
+
