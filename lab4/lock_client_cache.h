@@ -45,13 +45,13 @@ class lock_client_cache : public lock_client {
     bool revoke, retry;
 
     pthread_cond_t waitQueue;
+    pthread_cond_t retryQueue;
     pthread_cond_t releaseQueue;
-    pthread_cond_t acquireQueue;
 
     lock_entry() : state(NONE), revoke(false), retry(false) {
       pthread_cond_init(&waitQueue, NULL);
+      pthread_cond_init(&retryQueue, NULL);
       pthread_cond_init(&releaseQueue, NULL);
-      pthread_cond_init(&acquireQueue, NULL);
     };
   };
   std::map<lock_protocol::lockid_t, lock_entry> m_lockMap;
