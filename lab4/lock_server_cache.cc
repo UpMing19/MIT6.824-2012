@@ -52,13 +52,13 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
         it->second.owner = id;
         if (it->second.waitSet.size()) {
           it->second.state = LOCKED_AND_WAIT;
-          it->second.revoked = true;
+          revoke = true;
         } else {
           it->second.state = LOCKED;
         }
       } else {
         it->second.waitSet.insert(id);
-        ret = ret = lock_protocol::RETRY;
+        ret = lock_protocol::RETRY;
       }
       break;
 
