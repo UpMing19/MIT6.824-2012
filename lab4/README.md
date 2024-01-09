@@ -41,3 +41,20 @@
 
 #### 5.服务器需要记录锁是否被持有且持有锁的每个client的ip:port（用来发送rpc请求） 和 正在等待client（给他们回复RETRY）
 
+
+
+# Server
+
+        FREE:锁在服务器上且空闲
+        LOCKED：锁被一个客户端持有，且没有客户端等待
+        LOCKED_AND_WAIT:锁被一个客户端持有，且有客户端等待
+        RETRYING:锁已经释放回服务器，准备等待通知等待队列中的一个客户端获取
+
+# Client
+    NONE:锁还在服务器上，本地没有这个锁
+    FREE:锁在客户端，且空闲
+    LOCKED:锁在客户端被占用
+    ACQUIRING：锁正在获取
+    RELEASING:锁正在释放
+
+
