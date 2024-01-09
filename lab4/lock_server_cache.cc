@@ -103,9 +103,6 @@ int lock_server_cache::release(lock_protocol::lockid_t lid, std::string id,
       case RETRYING:
         ret = lock_protocol::IOERR;
         break;
-
-      default:
-        break;
     }
   }
   lck.unlock();
