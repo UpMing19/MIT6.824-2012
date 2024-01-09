@@ -32,22 +32,46 @@ lock_client_cache::lock_client_cache(std::string xdst,
 }
 
 lock_protocol::status lock_client_cache::acquire(lock_protocol::lockid_t lid) {
-  int ret = lock_protocol::OK;
-  int r;
+  int ret = lock_protocol::OK, r;
+
   pthread_mutex_lock(&m_mutex);
+
   auto it = m_lockMap.find(lid);
+
   if (it == m_lockMap.end()) {
-    lock_entry lock;
-    it = m_lockMap.insert(std::make_pair(lid, lock)).first;
+    it = m_lockMap.insert(std::make_pair(lid, lock_entry())).first;
   }
 
-  while (1) {
-    switch (it->second.state) {
-      case NONE:
-        it->second.state = ACQUIRING;
-        it->second.retry = false;
+  switch (it->second.state) {
+    case NONE:
+      it->second.state = ACQUIRING;
+      it->second.retry = false;
+      pthread_mutex_unlock(&m_mutex);
+      ret = cl->call(lock_protocol::acquire, lid, id, r);
+      pthread_mutex_lock(&m_mutex);
+      if (ret == lock_protocol::OK) {
+        it->second.state = LOCKED;
         pthread_mutex_unlock(&m_mutex);
-        ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
+        return ret;
+      } else if (ret == lock_protocol::RETRY) {
+        if (!it->second.retry)
+          pthread_cond_wait(&it->second.retryQueue, &m_mutex);
+      }
+      break;
+    case FREE:
+      it->second.state = LOCKED;
+      pthread_mutex_unlock(&m_mutex);
+      return lock_protocol::OK;
+      break;
+    case LOCKED:
+      pthread_cond_wait(&it->second.waitQueue, &m_mutex);
+      break;
+    case ACQUIRING:
+      if (!it->second.retry)
+        pthread_cond_wait(&it->second.waitQueue, &m_mutex);
+      else {
+        pthread_mutex_unlock(&m_mutex);
+        ret = cl->call(lock_protocol::acquire, lid, id, r);
         pthread_mutex_lock(&m_mutex);
         if (ret == lock_protocol::OK) {
           it->second.state = LOCKED;
@@ -57,111 +81,93 @@ lock_protocol::status lock_client_cache::acquire(lock_protocol::lockid_t lid) {
           if (!it->second.retry)
             pthread_cond_wait(&it->second.retryQueue, &m_mutex);
         }
-        break;
-      case FREE:
-        it->second.state = LOCKED;
-        pthread_mutex_unlock(&m_mutex);
-        return ret;
-        break;
-      case LOCKED:
-        pthread_cond_wait(&it->second.waitQueue, &m_mutex);
-        break;
-      case ACQUIRING:
-        if (!it->second.retry) {
-          pthread_cond_wait(&it->second.waitQueue, &m_mutex);
-        } else {
-          it->second.retry = false;
-          pthread_mutex_unlock(&m_mutex);
-          ret = cl->call(lock_protocol::acquire, cl->id(), lid, r);
-          pthread_mutex_lock(&m_mutex);
-          if (ret == lock_protocol::OK) {
-            it->second.state = LOCKED;
-            pthread_mutex_unlock(&m_mutex);
-            return ret;
-          } else if (ret == lock_protocol::RETRY) {
-            if (!it->second.retry)
-              pthread_cond_wait(&it->second.retryQueue, &m_mutex);
-          }
-        }
-        break;
-      case RELEASING:
-        pthread_cond_wait(&it->second.releaseQueue, &m_mutex);
-        break;
+      }
+      break;
+    case RELEASING:
+      pthread_cond_wait(&it->second.releaseQueue, &m_mutex);
+      break;
 
-      default:
-        break;
-    }
+    default:
+      break;
   }
 
   return ret;
 }
 
 lock_protocol::status lock_client_cache::release(lock_protocol::lockid_t lid) {
-  int ret = lock_protocol::OK;
-  int r;
+  int ret = lock_protocol::OK, r;
+
   pthread_mutex_lock(&m_mutex);
+
   auto it = m_lockMap.find(lid);
+
   if (it == m_lockMap.end()) {
     pthread_mutex_unlock(&m_mutex);
     return lock_protocol::NOENT;
   }
-  if (!it->second.revoke) {
+
+  if (it->second.revoke) {
+    it->second.state = RELEASING;
+    it->second.revoke = false;
+    pthread_mutex_unlock(&m_mutex);
+    ret = cl->call(lock_protocol::release, lid, id, r);
+    pthread_mutex_lock(&m_mutex);
+    it->second.state = NONE;
+    pthread_cond_broadcast(&it->second.releaseQueue);
+    pthread_mutex_unlock(&m_mutex);
+    return ret;
+  } else {
     it->second.state = FREE;
     pthread_cond_signal(&it->second.waitQueue);
     pthread_mutex_unlock(&m_mutex);
     return ret;
   }
 
-  it->second.state = RELEASING;
-  pthread_mutex_unlock(&m_mutex);
-  cl->call(lock_protocol::release, cl->id(), lid, r);
-  pthread_mutex_lock(&m_mutex);
-  it->second.state = NONE;
-  pthread_cond_broadcast(&it->second.releaseQueue);
-
-  pthread_mutex_unlock(&m_mutex);
   return ret;
 }
 
 rlock_protocol::status lock_client_cache::revoke_handler(
     lock_protocol::lockid_t lid, int &) {
-  int ret = rlock_protocol::OK;
-  int r;
+  int ret = lock_protocol::OK, r;
+
   pthread_mutex_lock(&m_mutex);
+
   auto it = m_lockMap.find(lid);
+
   if (it == m_lockMap.end()) {
     pthread_mutex_unlock(&m_mutex);
     return lock_protocol::NOENT;
   }
 
-  switch (it->second.state) {
-    case FREE:
-      it->second.state = RELEASING;
-      pthread_mutex_unlock(&m_mutex);
-      cl->call(lock_protocol::release, cl->id(), lid, r);
-      pthread_mutex_lock(&m_mutex);
-      it->second.state = NONE;
-      pthread_cond_broadcast(&it->second.releaseQueue);
-      break;
-    default:
-      it->second.revoke = true;
-      break;
+  if (it->second.state == FREE) {
+    it->second.state = RELEASING;
+    pthread_mutex_unlock(&m_mutex);
+    ret = cl->call(lock_protocol::release, lid, id, r);
+    pthread_mutex_lock(&m_mutex);
+    it->second.state = NONE;
+    pthread_cond_broadcast(&it->second.releaseQueue);
+    pthread_mutex_unlock(&m_mutex);
+  } else {
+    it->second.revoke = true;
+    pthread_mutex_unlock(&m_mutex);
   }
 
-  pthread_mutex_unlock(&m_mutex);
   return ret;
 }
 
 rlock_protocol::status lock_client_cache::retry_handler(
     lock_protocol::lockid_t lid, int &) {
-  int ret = rlock_protocol::OK;
-  // todo:bujiasuo
+  int ret = lock_protocol::OK, r;
+
   pthread_mutex_lock(&m_mutex);
+
   auto it = m_lockMap.find(lid);
+
   if (it == m_lockMap.end()) {
     pthread_mutex_unlock(&m_mutex);
     return lock_protocol::NOENT;
   }
+
   it->second.retry = true;
   pthread_cond_signal(&it->second.retryQueue);
   pthread_mutex_unlock(&m_mutex);
