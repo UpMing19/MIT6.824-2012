@@ -2,6 +2,7 @@
 #define lock_server_cache_h
 
 #include <map>
+#include <queue>
 #include <set>
 #include <string>
 
@@ -28,7 +29,7 @@ class lock_server_cache {
   };
   struct lock_entry {
     std::string owner;
-    std::set<std::string> waitSet;
+    std::queue<std::string> waitSet;
     bool revoked;
     lock_state state;
     lock_entry() : state(FREE), revoked(false){};

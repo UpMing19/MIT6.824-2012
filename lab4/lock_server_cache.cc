@@ -35,16 +35,16 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
     it->second.owner = id;
   } else if (it->second.state == LOCKED) {
     revoke = true;
-    it->second.waitSet.insert(id);
+    it->second.waitSet.push(id);
     it->second.state = LOCKED_AND_WAIT;
     ret = lock_protocol::RETRY;
   } else if (it->second.state == LOCKED_AND_WAIT) {
     revoke = true;
-    it->second.waitSet.insert(id);
+    it->second.waitSet.push(id);
     ret = lock_protocol::RETRY;
   } else if (it->second.state == RETRYING) {
-    if (it->second.waitSet.count(id)) {
-      it->second.waitSet.erase(id);
+    if (it->second.waitSet.front() == id) {
+      it->second.waitSet.pop();
       it->second.owner = id;
       if (it->second.waitSet.size()) {
         it->second.state = LOCKED_AND_WAIT;
@@ -53,7 +53,7 @@ int lock_server_cache::acquire(lock_protocol::lockid_t lid, std::string id,
         it->second.state = LOCKED;
       }
     } else {
-      it->second.waitSet.insert(id);
+      it->second.waitSet.push(id);
       ret = lock_protocol::RETRY;
     }
   }
@@ -87,7 +87,7 @@ int lock_server_cache::release(lock_protocol::lockid_t lid, std::string id,
   } else {
     it->second.state = RETRYING;
     it->second.owner = "";
-    client_id = *it->second.waitSet.begin();
+    client_id = (it->second.waitSet.front());
     retry = true;
   }
 
