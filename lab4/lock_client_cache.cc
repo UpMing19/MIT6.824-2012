@@ -87,7 +87,7 @@ lock_protocol::status lock_client_cache::acquire(lock_protocol::lockid_t lid) {
         break;
 
       case RELEASING:
-        pthread_cond_wait(&it->second.releaseQueue, &m_mutex);
+        pthread_cond_wait(&it->second.retryQueue, &m_mutex);
         break;
     }
   }
@@ -113,7 +113,7 @@ lock_protocol::status lock_client_cache::release(lock_protocol::lockid_t lid) {
     ret = cl->call(lock_protocol::release, lid, id, r);
     pthread_mutex_lock(&m_mutex);
     it->second.state = NONE;
-    pthread_cond_broadcast(&it->second.releaseQueue);
+    pthread_cond_broadcast(&it->second.retryQueue);
     pthread_mutex_unlock(&m_mutex);
     return ret;
   } else {
@@ -143,7 +143,7 @@ rlock_protocol::status lock_client_cache::revoke_handler(
     ret = cl->call(lock_protocol::release, lid, id, r);
     pthread_mutex_lock(&m_mutex);
     it->second.state = NONE;
-    pthread_cond_broadcast(&it->second.releaseQueue);
+    pthread_cond_broadcast(&it->second.retryQueue);
 
   } else {
     it->second.revoke = true;
