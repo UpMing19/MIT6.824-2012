@@ -27,7 +27,6 @@ extent_protocol::status extent_client_cache::get(
       m_dataMap[eid].attr.ctime = m_dataMap[eid].attr.mtime = 0;
       m_dataMap[eid].status = UPDATE;
     }
-    return ret;
   } else {
     switch (it->second.status) {
       case NONE:
@@ -46,11 +45,11 @@ extent_protocol::status extent_client_cache::get(
         break;
       case REMOVE:
         ret = extent_protocol::NOENT;
-        return ret;
         break;
     }
-    return ret;
   }
+  buf = m_dataMap[eid].data;
+  return ret;
 }
 
 extent_protocol::status extent_client_cache::getattr(
