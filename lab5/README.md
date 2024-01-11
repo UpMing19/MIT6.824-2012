@@ -13,4 +13,4 @@
 
 ## Step2
     1.在lock-client返回锁到服务器之前调用dorelease方法将yfs-client的缓存内容flush到extent-server
-    2.
+    2.新建extent-client的子类 extent-client_cache 并且考虑一致性的问题
