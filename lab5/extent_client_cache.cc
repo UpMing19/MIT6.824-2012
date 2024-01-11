@@ -86,7 +86,6 @@ extent_protocol::status extent_client_cache::put(
     m_dataMap[eid].status = MODIFY;
     m_dataMap[eid].data = buf;
     m_dataMap[eid].attr.size = buf.size();
-    // m_dataMap[eid].attr.atime = time(NULL);
     m_dataMap[eid].attr.ctime = time(NULL);
     m_dataMap[eid].attr.mtime = time(NULL);
   } else {
@@ -96,7 +95,6 @@ extent_protocol::status extent_client_cache::put(
       m_dataMap[eid].status = MODIFY;
       m_dataMap[eid].data = buf;
       m_dataMap[eid].attr.size = buf.size();
-      //   m_dataMap[eid].attr.atime = time(NULL);
       m_dataMap[eid].attr.ctime = time(NULL);
       m_dataMap[eid].attr.mtime = time(NULL);
     }
@@ -112,8 +110,8 @@ extent_protocol::status extent_client_cache::remove(
   std::lock_guard<std::mutex> lg(m_mutex);
   auto it = m_dataMap.find(eid);
   if (it == m_dataMap.end()) {
-    m_dataMap[eid].status = REMOVE;
-    //   ret = extent_protocol::NOENT;
+    //  m_dataMap[eid].status = REMOVE;
+    ret = extent_protocol::NOENT;
   } else {
     if (m_dataMap[eid].status == REMOVE)
       ret = extent_protocol::NOENT;
@@ -137,7 +135,6 @@ extent_protocol::status extent_client_cache::flush(
       ret = cl->call(extent_protocol::put, eid, m_dataMap[eid].data, r);
     }
     m_dataMap.erase(eid);
-    //  m_dataMap[eid].status = NONE;
   }
 
   return ret;
