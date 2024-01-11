@@ -6,11 +6,13 @@
 #include <vector>
 
 #include "extent_client.h"
+#include "extent_client_cache.h"
 #include "lock_client.h"
+#include "lock_client_cache.h"
 #include "lock_protocol.h"
 
 class yfs_client {
-  extent_client *ec;
+  extent_client_cache *ec;
   lock_client *m_lc;
 
  public:

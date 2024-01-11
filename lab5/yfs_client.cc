@@ -15,8 +15,9 @@
 #include "lock_client_cache.h"
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst) {
-  ec = new extent_client(extent_dst);
-  m_lc = new lock_client_cache(lock_dst);
+  ec = new extent_client_cache(extent_dst);
+  lock_release_user* lu = new lock_user(ec);
+  m_lc = new lock_client_cache(lock_dst, lu);
 }
 
 yfs_client::inum yfs_client::n2i(std::string n) {
