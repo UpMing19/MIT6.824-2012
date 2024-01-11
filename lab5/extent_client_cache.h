@@ -7,9 +7,11 @@
 #include "extent_client.h"
 #include "extent_protocol.h"
 class extent_client_cache : public extent_client {
+  enum file_status { NONE, UPDATE, MODIFY, REMOVE };
   struct extent {
     std::string data;
     extent_protocol::attr attr;
+    file_status status = NONE;
   };
 
  public:
