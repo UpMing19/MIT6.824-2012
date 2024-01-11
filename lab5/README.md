@@ -10,3 +10,7 @@
     get():如果在本地缓存有，直接返回，否则去请求服务器
     remove():清空本地缓存
     getattr():返回相应数据
+
+## Step2
+    1.在lock-client返回锁到服务器之前调用dorelease方法将yfs-client的缓存内容flush到extent-server
+    2.
