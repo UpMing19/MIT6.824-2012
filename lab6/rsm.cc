@@ -80,6 +80,8 @@
 
 #include "rsm.h"
 
+#include <unistd.h>
+
 #include <fstream>
 #include <iostream>
 
