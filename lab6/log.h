@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-
+#include "paxos_protocol.h"
 
 class acceptor;
 
