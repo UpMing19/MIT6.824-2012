@@ -80,6 +80,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <unistd.h>
 
 #include "handle.h"
 #include "rsm.h"
@@ -199,19 +200,19 @@ bool rsm::sync_with_backups() {
     // BUSY.
   }
   // pthread_mutex_lock(&rsm_mutex);
-  // Start accepting synchronization request (statetransferreq) now!
+  //  Start accepting synchronization request (statetransferreq) now!
   insync = true;
   // You fill this in for Lab 7
   // Wait until
   //   - all backups in view vid_insync are synchronized
   //   - or there is a committed viewchange
-
   std::vector<std::string> members = cfg->get_view(vid_insync);
   backups.clear();
   backups.insert(members.begin(), members.end());
   backups.erase(cfg->myaddr());
 
   pthread_cond_wait(&recovery_cond, &rsm_mutex);
+
   insync = false;
   return true;
 }
@@ -222,14 +223,19 @@ bool rsm::sync_with_primary() {
   // You fill this in for Lab 7
   // Keep synchronizing with primary until the synchronization succeeds,
   // or there is a commited viewchange
+  while (true) {
+    if (vid_commit != vid_insync) {
+      return false;
+    }
 
-  while (1) {
-    if (vid_commit != vid_insync) return false;
     if (statetransfer(m)) {
       break;
     }
   }
-  if (vid_commit != vid_insync) return false;
+
+  if (vid_commit != vid_insync) {
+    return false;
+  }
   statetransferdone(m);
 
   return true;
@@ -270,7 +276,7 @@ bool rsm::statetransfer(std::string m) {
 bool rsm::statetransferdone(std::string m) {
   // You fill this in for Lab 7
   // - Inform primary that this slave has synchronized for vid_insync
-  rsm_client_protocol::status ret;
+  rsm_protocol::status ret;
   pthread_mutex_unlock(&rsm_mutex);
   rpcc *cl = handle(m).safebind();
   if (cl) {
@@ -353,50 +359,61 @@ void rsm::execute(int procno, std::string req, std::string &r) {
 //
 rsm_client_protocol::status rsm::client_invoke(int procno, std::string req,
                                                std::string &r) {
-  int ret = rsm_client_protocol::OK;
-  // You fill this in for Lab 7
+  viewstamp vs;
+  std::vector<std::string> members;
+
   pthread_mutex_lock(&rsm_mutex);
+
   if (inviewchange) {
     pthread_mutex_unlock(&rsm_mutex);
     return rsm_client_protocol::BUSY;
   }
-  if (cfg->myaddr() != primary) {
+
+  if (primary != cfg->myaddr()) {
     pthread_mutex_unlock(&rsm_mutex);
     return rsm_client_protocol::NOTPRIMARY;
   }
 
   {
     ScopedLock ml(&invoke_mutex);
-
     int dummy_r;
-    viewstamp vs;
-    std::vector<std::string> members;
-    last_myvs = myvs;
+
+    // We are definitely master (primary).
     vs = myvs;
+    last_myvs = myvs;
     myvs.seqno += 1;
+
     members = cfg->get_view(vs.vid);
 
+    // Release rsm_mutex once we have got invoke_mutex.
     pthread_mutex_unlock(&rsm_mutex);
-    int flag = 1;
-    for (auto member : members) {
-      if (member == cfg->myaddr()) continue;
+    bool first = true;
+    for (const std::string &member : members) {
+      if (member == cfg->myaddr()) {
+        continue;
+      }
+
       handle h(member);
       rpcc *cl = h.safebind();
+
       if (cl == NULL || cl->call(rsm_protocol::invoke, procno, vs, req, dummy_r,
                                  rpcc::to(1000)) != rsm_protocol::OK) {
         tprintf("client_invoke: failed to invoke slave %s.\n", member.c_str());
-        return rsm_protocol::BUSY;
+        return rsm_client_protocol::BUSY;
       }
-      if (flag) {
-        flag = false;
+
+      if (first) {
+        first = false;
+        // 在主服务器完成调用对一个从服务器调用RSM请求之后在它继续向其它从服务器发出RSM请求之前，主服务器crash
         breakpoint1();
         partition1();
       }
     }
+
     execute(procno, req, r);
   }
 
-  return ret;
+  return rsm_client_protocol::OK;
 }
 
 //
@@ -410,24 +427,23 @@ rsm_protocol::status rsm::invoke(int proc, viewstamp vs, std::string req,
                                  int &dummy) {
   rsm_protocol::status ret = rsm_protocol::OK;
   // You fill this in for Lab 7
-  // ScopedLock rl(&rsm_mutex);
-  pthread_mutex_lock(&rsm_mutex);
+  ScopedLock rl(&rsm_mutex);
   if (inviewchange) {
-    pthread_mutex_unlock(&rsm_mutex);
-    return rsm_client_protocol::BUSY;
-  }
-  if (vs != myvs || primary == cfg->myaddr()) {
-    pthread_mutex_unlock(&rsm_mutex);
-    return rsm_client_protocol::ERR;
+    ret = rsm_protocol::BUSY;
+  } else if (primary == cfg->myaddr()) {
+    ret = rsm_protocol::ERR;
+  } else if (vs != myvs) {
+    ret = rsm_protocol::ERR;
+  } else {
+    last_myvs = myvs;
+    myvs.seqno++;
+    std::string r;
+    execute(proc, req, r);
+
+    // 在从服务器完成执行请求后crash
+    breakpoint1();
   }
 
-  last_myvs = myvs;
-  myvs.seqno++;
-  std::string r;
-  execute(proc, req, r);
-
-  breakpoint1();
-  pthread_mutex_unlock(&rsm_mutex);
   return ret;
 }
 
@@ -462,10 +478,16 @@ rsm_protocol::status rsm::transferdonereq(std::string m, unsigned vid, int &) {
   //   for the same view with me
   // - Remove the slave from the list of unsynchronized backups
   // - Wake up recovery thread if all backups are synchronized
+  if (!insync || vid != vid_insync) {
+    return rsm_protocol::BUSY;
+  }
 
-  if (insync == false || vid_insync != vid) return rsm_protocol::BUSY;
   backups.erase(m);
-  if (backups.size() == 0) pthread_cond_signal(&recovery_cond);
+
+  if (backups.empty()) {
+    pthread_cond_signal(&recovery_cond);
+  }
+
   return ret;
 }
 
