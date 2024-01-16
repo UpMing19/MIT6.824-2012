@@ -83,7 +83,7 @@ lock_protocol::status lock_client_cache_rsm::acquire(
         it->second.retry = false;
         xid++;
         lck.unlock();
-        ret =  rsmc->call(lock_protocol::acquire, lid, id, it->second.xid, r);
+        ret = rsmc->call(lock_protocol::acquire, lid, id, it->second.xid, r);
         lck.lock();
         if (ret == lock_protocol::OK) {
           it->second.status = LOCKED;
@@ -109,7 +109,7 @@ lock_protocol::status lock_client_cache_rsm::acquire(
           it->second.xid = xid;
           xid++;
           lck.unlock();
-          ret =   rsmc->call(lock_protocol::acquire, lid, id, it->second.xid, r);
+          ret = rsmc->call(lock_protocol::acquire, lid, id, it->second.xid, r);
           lck.lock();
           if (ret == lock_protocol::OK) {
             it->second.status = LOCKED;
@@ -144,7 +144,7 @@ lock_protocol::status lock_client_cache_rsm::release(
     it->second.revoke = false;
     lck.unlock();
     if (lu) lu->dorelease(lid);
-    ret =   rsmc->call(lock_protocol::release, lid, id, it->second.xid, r);
+    ret = rsmc->call(lock_protocol::release, lid, id, it->second.xid, r);
     lck.lock();
     it->second.status = NONE;
     releaseQueue.notify_all();
