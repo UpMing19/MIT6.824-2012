@@ -102,4 +102,8 @@ rsm_state_transfer.h：这可能是一个提供了状态同步相关功能的代
 4.主服务器在本地执行请求，并将结果回复给客户端。
 ```
 
-### 
+### RSM without failures
+
+### Cope with Backup Failures and Implement state transfer
+
+### Cope with Primary Failures

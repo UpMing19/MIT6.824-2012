@@ -9,6 +9,7 @@
 #include "tprintf.h"
 
 #include "rsm_client.h"
+#include <chrono>
 
 static void *releasethread(void *x) {
   lock_client_cache_rsm *cc = (lock_client_cache_rsm *)x;
@@ -89,7 +90,13 @@ lock_protocol::status lock_client_cache_rsm::acquire(
           it->second.status = LOCKED;
           return ret;
         } else if (ret == lock_protocol::RETRY) {
-          if (it->second.retry == false) retryQueue.wait(lck);
+          if (it->second.retry == false) {
+            auto now = std::chrono::system_clock::now();
+            if (retryQueue.wait_until(lck, now + std::chrono::seconds(3)) ==
+                std::cv_status::timeout) {
+              it->second.retry = true;
+            }
+          }
         }
 
         break;
@@ -115,7 +122,13 @@ lock_protocol::status lock_client_cache_rsm::acquire(
             it->second.status = LOCKED;
             return ret;
           } else if (ret == lock_protocol::RETRY) {
-            if (it->second.retry == false) retryQueue.wait(lck);
+            if (it->second.retry == false) {
+              auto now = std::chrono::system_clock::now();
+              if (retryQueue.wait_until(lck, now + std::chrono::seconds(3)) ==
+                  std::cv_status::timeout) {
+                it->second.retry = true;
+              }
+            }
           }
         } else {
           waitQueue.wait(lck);
@@ -138,13 +151,13 @@ lock_protocol::status lock_client_cache_rsm::release(
   std::unique_lock<std::mutex> lck(m_mutex);
   auto it = m_lockMap.find(lid);
   if (it == m_lockMap.end()) return lock_protocol::NOENT;
-
+  lock_protocol::xid_t cur_xid = it->second.xid;
   if (it->second.revoke) {
     it->second.status = RELEASING;
     it->second.revoke = false;
     lck.unlock();
     if (lu) lu->dorelease(lid);
-    ret = rsmc->call(lock_protocol::release, lid, id, it->second.xid, r);
+    ret = rsmc->call(lock_protocol::release, lid, id, cur_xid, r);
     lck.lock();
     it->second.status = NONE;
     releaseQueue.notify_all();

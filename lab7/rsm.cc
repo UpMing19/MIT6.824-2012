@@ -377,7 +377,7 @@ rsm_client_protocol::status rsm::client_invoke(int procno, std::string req,
     members = cfg->get_view(vs.vid);
 
     pthread_mutex_unlock(&rsm_mutex);
-
+    int flag = 1;
     for (auto member : members) {
       if (member == cfg->myaddr()) continue;
       handle h(member);
@@ -386,6 +386,11 @@ rsm_client_protocol::status rsm::client_invoke(int procno, std::string req,
                                  rpcc::to(1000)) != rsm_protocol::OK) {
         tprintf("client_invoke: failed to invoke slave %s.\n", member.c_str());
         return rsm_protocol::BUSY;
+      }
+      if (flag) {
+        flag = false;
+        breakpoint1();
+        partition1();
       }
     }
     execute(procno, req, r);
@@ -405,7 +410,7 @@ rsm_protocol::status rsm::invoke(int proc, viewstamp vs, std::string req,
                                  int &dummy) {
   rsm_protocol::status ret = rsm_protocol::OK;
   // You fill this in for Lab 7
-
+  // ScopedLock rl(&rsm_mutex);
   pthread_mutex_lock(&rsm_mutex);
   if (inviewchange) {
     pthread_mutex_unlock(&rsm_mutex);
@@ -420,6 +425,8 @@ rsm_protocol::status rsm::invoke(int proc, viewstamp vs, std::string req,
   myvs.seqno++;
   std::string r;
   execute(proc, req, r);
+
+  breakpoint1();
   pthread_mutex_unlock(&rsm_mutex);
   return ret;
 }
