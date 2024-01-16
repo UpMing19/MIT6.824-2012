@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <unistd.h>
 #include <stdio.h>
 
 rsmtest_client::rsmtest_client(std::string dst)

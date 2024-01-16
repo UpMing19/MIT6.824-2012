@@ -90,14 +90,14 @@
 static void *
 recoverythread(void *x)
 {
-  rsm *r = (rsm *) x;
+  rsm *r = (rsm *)x;
   r->recovery();
   return 0;
 }
 
-rsm::rsm(std::string _first, std::string _me) 
-  : stf(0), primary(_first), insync (false), inviewchange (true), vid_commit(0),
-    partitioned (false), dopartition(false), break1(false), break2(false)
+rsm::rsm(std::string _first, std::string _me)
+    : stf(0), primary(_first), insync(false), inviewchange(true), vid_commit(0),
+      partitioned(false), dopartition(false), break1(false), break2(false)
 {
   pthread_t th;
 
@@ -113,7 +113,8 @@ rsm::rsm(std::string _first, std::string _me)
 
   cfg = new config(_first, _me, this);
 
-  if (_first == _me) {
+  if (_first == _me)
+  {
     // Commit the first view here. We can not have acceptor::acceptor
     // do the commit, since at that time this->cfg is not initialized
     commit_change(1);
@@ -132,41 +133,47 @@ rsm::rsm(std::string _first, std::string _me)
   testsvr->reg(rsm_test_protocol::breakpoint, this, &rsm::breakpointreq);
 
   {
-      ScopedLock ml(&rsm_mutex);
-      VERIFY(pthread_create(&th, NULL, &recoverythread, (void *) this) == 0);
+    ScopedLock ml(&rsm_mutex);
+    VERIFY(pthread_create(&th, NULL, &recoverythread, (void *)this) == 0);
   }
 }
 
-void
-rsm::reg1(int proc, handler *h)
+void rsm::reg1(int proc, handler *h)
 {
   ScopedLock ml(&rsm_mutex);
   procs[proc] = h;
 }
 
 // The recovery thread runs this function
-void
-rsm::recovery()
+void rsm::recovery()
 {
   bool r = true;
   ScopedLock ml(&rsm_mutex);
 
-  while (1) {
-    while (!cfg->ismember(cfg->myaddr(), vid_commit)) {
-      if (join(primary)) {
-	tprintf("recovery: joined\n");
+  while (1)
+  {
+    while (!cfg->ismember(cfg->myaddr(), vid_commit))
+    {
+      if (join(primary))
+      {
+        tprintf("recovery: joined\n");
         commit_change_wo(cfg->vid());
-      } else {
-	VERIFY(pthread_mutex_unlock(&rsm_mutex)==0);
-	sleep (5); // XXX make another node in cfg primary?
-	VERIFY(pthread_mutex_lock(&rsm_mutex)==0);
+      }
+      else
+      {
+        VERIFY(pthread_mutex_unlock(&rsm_mutex) == 0);
+        sleep(5); // XXX make another node in cfg primary?
+        VERIFY(pthread_mutex_lock(&rsm_mutex) == 0);
       }
     }
     vid_insync = vid_commit;
     tprintf("recovery: sync vid_insync %d\n", vid_insync);
-    if (primary == cfg->myaddr()) {
+    if (primary == cfg->myaddr())
+    {
       r = sync_with_backups();
-    } else {
+    }
+    else
+    {
       r = sync_with_primary();
     }
     tprintf("recovery: sync done\n");
@@ -176,7 +183,8 @@ rsm::recovery()
     if (vid_insync != vid_commit)
       continue;
 
-    if (r) { 
+    if (r)
+    {
       myvs.vid = vid_commit;
       myvs.seqno = 1;
       inviewchange = false;
@@ -186,12 +194,11 @@ rsm::recovery()
   }
 }
 
-bool
-rsm::sync_with_backups()
+bool rsm::sync_with_backups()
 {
   pthread_mutex_unlock(&rsm_mutex);
   {
-    // Make sure that the state of lock_server_cache_rsm is stable during 
+    // Make sure that the state of lock_server_cache_rsm is stable during
     // synchronization; otherwise, the primary's state may be more recent
     // than replicas after the synchronization.
     ScopedLock ml(&invoke_mutex);
@@ -208,84 +215,120 @@ rsm::sync_with_backups()
   // Wait until
   //   - all backups in view vid_insync are synchronized
   //   - or there is a committed viewchange
+
+  std::vector<std::string> members = cfg->get_view(vid_insync);
+  backups.clear();
+  backups = members;
+  backups.erase(cfg->myaddr());
+
+  pthread_cond_wait(&recovery_cond, &rsm_mutex);
   insync = false;
   return true;
 }
 
-
-bool
-rsm::sync_with_primary()
+bool rsm::sync_with_primary()
 {
   // Remember the primary of vid_insync
   std::string m = primary;
   // You fill this in for Lab 7
   // Keep synchronizing with primary until the synchronization succeeds,
   // or there is a commited viewchange
-  return true;
-}
 
+  while (1)
+  {
+    if (vid_commit != vid_insync)
+      return false;
+    if (statetransfer(m))
+    {
+      break;
+    }
+  }
+  if (vid_commit != vid_insync)
+    return false;
+  statetransferdone(m);
+
+      return true;
+}
 
 /**
  * Call to transfer state from m to the local node.
  * Assumes that rsm_mutex is already held.
  */
-bool
-rsm::statetransfer(std::string m)
+bool rsm::statetransfer(std::string m)
 {
   // Code will be provided in Lab 7
   rsm_protocol::transferres r;
   handle h(m);
   int ret;
-  tprintf("rsm::statetransfer: contact %s w. my last_myvs(%d,%d)\n", 
-	 m.c_str(), last_myvs.vid, last_myvs.seqno);
-  VERIFY(pthread_mutex_unlock(&rsm_mutex)==0);
+  tprintf("rsm::statetransfer: contact %s w. my last_myvs(%d,%d)\n",
+          m.c_str(), last_myvs.vid, last_myvs.seqno);
+  VERIFY(pthread_mutex_unlock(&rsm_mutex) == 0);
   rpcc *cl = h.safebind();
-  if (cl) {
-    ret = cl->call(rsm_protocol::transferreq, cfg->myaddr(), 
-                             last_myvs, vid_insync, r, rpcc::to(1000));
+  if (cl)
+  {
+    ret = cl->call(rsm_protocol::transferreq, cfg->myaddr(),
+                   last_myvs, vid_insync, r, rpcc::to(1000));
   }
-  VERIFY(pthread_mutex_lock(&rsm_mutex)==0);
-  if (cl == 0 || ret != rsm_protocol::OK) {
-    tprintf("rsm::statetransfer: couldn't reach %s %lx %d\n", m.c_str(), 
-	   (long unsigned) cl, ret);
+  VERIFY(pthread_mutex_lock(&rsm_mutex) == 0);
+  if (cl == 0 || ret != rsm_protocol::OK)
+  {
+    tprintf("rsm::statetransfer: couldn't reach %s %lx %d\n", m.c_str(),
+            (long unsigned)cl, ret);
     return false;
   }
-  if (stf && last_myvs != r.last) {
+  if (stf && last_myvs != r.last)
+  {
     stf->unmarshal_state(r.state);
   }
   last_myvs = r.last;
-  tprintf("rsm::statetransfer transfer from %s success, vs(%d,%d)\n", 
-	 m.c_str(), last_myvs.vid, last_myvs.seqno);
+  tprintf("rsm::statetransfer transfer from %s success, vs(%d,%d)\n",
+          m.c_str(), last_myvs.vid, last_myvs.seqno);
   return true;
 }
 
-bool
-rsm::statetransferdone(std::string m) {
+bool rsm::statetransferdone(std::string m)
+{
   // You fill this in for Lab 7
   // - Inform primary that this slave has synchronized for vid_insync
+  rsm_client_protocol ret;
+  pthread_mutex_unlock(&rsm_mutex);
+  rpcc *cl = handle(m).safebind();
+  if (cl)
+  {
+    int r;
+    ret = cl->call(rsm_protocol::transferdonereq, cfg->myaddr(), vid_insync, r, rpcc::to(1000));
+  }
+  pthread_mutex_lock(&rsm_mutex);
+
+  if (cl == NULL || ret != rsm_protocol::OK)
+  {
+    return false;
+  }
+
   return true;
 }
 
-
-bool
-rsm::join(std::string m) {
+bool rsm::join(std::string m)
+{
   handle h(m);
   int ret;
   rsm_protocol::joinres r;
 
-  tprintf("rsm::join: %s mylast (%d,%d)\n", m.c_str(), last_myvs.vid, 
+  tprintf("rsm::join: %s mylast (%d,%d)\n", m.c_str(), last_myvs.vid,
           last_myvs.seqno);
-  VERIFY(pthread_mutex_unlock(&rsm_mutex)==0);
+  VERIFY(pthread_mutex_unlock(&rsm_mutex) == 0);
   rpcc *cl = h.safebind();
-  if (cl != 0) {
-    ret = cl->call(rsm_protocol::joinreq, cfg->myaddr(), last_myvs, 
-		   r, rpcc::to(120000));
+  if (cl != 0)
+  {
+    ret = cl->call(rsm_protocol::joinreq, cfg->myaddr(), last_myvs,
+                   r, rpcc::to(120000));
   }
-  VERIFY(pthread_mutex_lock(&rsm_mutex)==0);
+  VERIFY(pthread_mutex_lock(&rsm_mutex) == 0);
 
-  if (cl == 0 || ret != rsm_protocol::OK) {
-    tprintf("rsm::join: couldn't reach %s %p %d\n", m.c_str(), 
-	   cl, ret);
+  if (cl == 0 || ret != rsm_protocol::OK)
+  {
+    tprintf("rsm::join: couldn't reach %s %p %d\n", m.c_str(),
+            cl, ret);
     return false;
   }
   tprintf("rsm::join: succeeded %s\n", r.log.c_str());
@@ -294,23 +337,21 @@ rsm::join(std::string m) {
 }
 
 /*
- * Config informs rsm whenever it has successfully 
+ * Config informs rsm whenever it has successfully
  * completed a view change
  */
-void 
-rsm::commit_change(unsigned vid) 
+void rsm::commit_change(unsigned vid)
 {
   ScopedLock ml(&rsm_mutex);
   commit_change_wo(vid);
 }
 
-void 
-rsm::commit_change_wo(unsigned vid) 
+void rsm::commit_change_wo(unsigned vid)
 {
   if (vid <= vid_commit)
     return;
-  tprintf("commit_change: new view (%d)  last vs (%d,%d) %s insync %d\n", 
-	 vid, last_myvs.vid, last_myvs.seqno, primary.c_str(), insync);
+  tprintf("commit_change: new view (%d)  last vs (%d,%d) %s insync %d\n",
+          vid, last_myvs.vid, last_myvs.seqno, primary.c_str(), insync);
   vid_commit = vid;
   inviewchange = true;
   set_primary(vid);
@@ -319,9 +360,7 @@ rsm::commit_change_wo(unsigned vid)
     breakpoint2();
 }
 
-
-void
-rsm::execute(int procno, std::string req, std::string &r)
+void rsm::execute(int procno, std::string req, std::string &r)
 {
   tprintf("execute\n");
   handler *h = procs[procno];
@@ -347,21 +386,78 @@ rsm::client_invoke(int procno, std::string req, std::string &r)
 {
   int ret = rsm_client_protocol::OK;
   // You fill this in for Lab 7
+  pthread_mutex_lock(&rsm_mutex);
+  if (inviewchange)
+  {
+    pthread_mutex_unlock(&rsm_mutex);
+    return rsm_client_protocol::BUSY;
+  }
+  else if (cfg->myaddr() != primary)
+  {
+    pthread_mutex_unlock(&rsm_mutex);
+    return rsm_client_protocol::NOTPRIMARY;
+  }
+
+  {
+    ScopedLock ml(&invoke_mutex);
+
+    int dummy_r;
+    viewstamp vs;
+    std::vector<std::string> members;
+    last_myvs = myvs;
+    vs = myvs;
+    myvs.seqno += 1;
+    members = cfg->get_view(vs.vid);
+
+    pthread_mutex_unlock(&invoke_mutex);
+
+    for (auto member : members)
+    {
+      if (member == cfg->myaddr())
+        continue;
+      handle h(member);
+      rpcc *cl = h.safebind();
+      if (cl == NULL || cl->call(rsm_protocol::invoke, procno, vs, req, dummy_r, rpcc::to(1000)) != rsm_protocol::OK)
+      {
+        tprintf("client_invoke: failed to invoke slave %s.\n", member.c_str());
+        return rsm_protocol::BUSY;
+      }
+    }
+    execute(procno, req, r);
+  }
+
   return ret;
 }
 
-// 
-// The primary calls the internal invoke at each member of the
-// replicated state machine 
 //
-// the replica must execute requests in order (with no gaps) 
-// according to requests' seqno 
+// The primary calls the internal invoke at each member of the
+// replicated state machine
+//
+// the replica must execute requests in order (with no gaps)
+// according to requests' seqno
 
 rsm_protocol::status
 rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
 {
   rsm_protocol::status ret = rsm_protocol::OK;
   // You fill this in for Lab 7
+
+  pthread_mutex_lock(&rsm_mutex);
+  if (inviewchange)
+  {
+    pthread_mutex_unlock(&rsm_mutex);
+    return rsm_client_protocol::BUSY;
+  }
+  if (vs != myvs || primary == cfg->myaddr())
+  {
+    pthread_mutex_unlock(&rsm_mutex);
+    return rsm_client_protocol::ERR;
+  }
+
+  last_myvs = myvs;
+  myvs.seqno++;
+  std::string r;
+  execute(proc, req, r);
   return ret;
 }
 
@@ -369,27 +465,28 @@ rsm::invoke(int proc, viewstamp vs, std::string req, int &dummy)
  * RPC handler: Send back the local node's state to the caller
  */
 rsm_protocol::status
-rsm::transferreq(std::string src, viewstamp last, unsigned vid, 
-rsm_protocol::transferres &r)
+rsm::transferreq(std::string src, viewstamp last, unsigned vid,
+                 rsm_protocol::transferres &r)
 {
   ScopedLock ml(&rsm_mutex);
   int ret = rsm_protocol::OK;
   // Code will be provided in Lab 7
-  tprintf("transferreq from %s (%d,%d) vs (%d,%d)\n", src.c_str(), 
-	 last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
-  if (!insync || vid != vid_insync) {
-     return rsm_protocol::BUSY;
+  tprintf("transferreq from %s (%d,%d) vs (%d,%d)\n", src.c_str(),
+          last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
+  if (!insync || vid != vid_insync)
+  {
+    return rsm_protocol::BUSY;
   }
-  if (stf && last != last_myvs) 
+  if (stf && last != last_myvs)
     r.state = stf->marshal_state();
   r.last = last_myvs;
   return ret;
 }
 
 /**
-  * RPC handler: Inform the local node (the primary) that node m has synchronized
-  * for view vid
-  */
+ * RPC handler: Inform the local node (the primary) that node m has synchronized
+ * for view vid
+ */
 rsm_protocol::status
 rsm::transferdonereq(std::string m, unsigned vid, int &)
 {
@@ -400,6 +497,10 @@ rsm::transferdonereq(std::string m, unsigned vid, int &)
   //   for the same view with me
   // - Remove the slave from the list of unsynchronized backups
   // - Wake up recovery thread if all backups are synchronized
+
+  if(insync==false || vid_insync != vid) return rsm_protocol::BUSY;
+  backups.erase(m);
+  if(backups.size()==0) pthread_cond_signal(&recovery_cond);
   return ret;
 }
 
@@ -412,25 +513,33 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
   int ret = rsm_protocol::OK;
 
   ScopedLock ml(&rsm_mutex);
-  tprintf("joinreq: src %s last (%d,%d) mylast (%d,%d)\n", m.c_str(), 
-	 last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
-  if (cfg->ismember(m, vid_commit)) {
+  tprintf("joinreq: src %s last (%d,%d) mylast (%d,%d)\n", m.c_str(),
+          last.vid, last.seqno, last_myvs.vid, last_myvs.seqno);
+  if (cfg->ismember(m, vid_commit))
+  {
     tprintf("joinreq: is still a member\n");
     r.log = cfg->dump();
-  } else if (cfg->myaddr() != primary) {
+  }
+  else if (cfg->myaddr() != primary)
+  {
     tprintf("joinreq: busy\n");
     ret = rsm_protocol::BUSY;
-  } else {
-    // We cache vid_commit to avoid adding m to a view which already contains 
+  }
+  else
+  {
+    // We cache vid_commit to avoid adding m to a view which already contains
     // m due to race condition
     unsigned vid_cache = vid_commit;
-    VERIFY (pthread_mutex_unlock(&rsm_mutex) == 0);
+    VERIFY(pthread_mutex_unlock(&rsm_mutex) == 0);
     bool succ = cfg->add(m, vid_cache);
-    VERIFY (pthread_mutex_lock(&rsm_mutex) == 0);
-    if (cfg->ismember(m, cfg->vid())) {
+    VERIFY(pthread_mutex_lock(&rsm_mutex) == 0);
+    if (cfg->ismember(m, cfg->vid()))
+    {
       r.log = cfg->dump();
       tprintf("joinreq: ret %d log %s\n:", ret, r.log.c_str());
-    } else {
+    }
+    else
+    {
       tprintf("joinreq: failed; proposer couldn't add %d\n", succ);
       ret = rsm_protocol::BUSY;
     }
@@ -440,7 +549,7 @@ rsm::joinreq(std::string m, viewstamp last, rsm_protocol::joinres &r)
 
 /*
  * RPC handler: Send back all the nodes this local knows about to client
- * so the client can switch to a different primary 
+ * so the client can switch to a different primary
  * when it existing primary fails
  */
 rsm_client_protocol::status
@@ -452,28 +561,30 @@ rsm::client_members(int i, std::vector<std::string> &r)
   m.push_back(primary);
   r = m;
   tprintf("rsm::client_members return %s m %s\n", print_members(m).c_str(),
-	 primary.c_str());
+          primary.c_str());
   return rsm_client_protocol::OK;
 }
 
 // if primary is member of new view, that node is primary
 // otherwise, the lowest number node of the previous view.
 // caller should hold rsm_mutex
-void
-rsm::set_primary(unsigned vid)
+void rsm::set_primary(unsigned vid)
 {
   std::vector<std::string> c = cfg->get_view(vid);
   std::vector<std::string> p = cfg->get_view(vid - 1);
-  VERIFY (c.size() > 0);
+  VERIFY(c.size() > 0);
 
-  if (isamember(primary,c)) {
+  if (isamember(primary, c))
+  {
     tprintf("set_primary: primary stays %s\n", primary.c_str());
     return;
   }
 
   VERIFY(p.size() > 0);
-  for (unsigned i = 0; i < p.size(); i++) {
-    if (isamember(p[i], c)) {
+  for (unsigned i = 0; i < p.size(); i++)
+  {
+    if (isamember(p[i], c))
+    {
       primary = p[i];
       tprintf("set_primary: primary is %s\n", primary.c_str());
       return;
@@ -482,44 +593,47 @@ rsm::set_primary(unsigned vid)
   VERIFY(0);
 }
 
-bool
-rsm::amiprimary()
+bool rsm::amiprimary()
 {
   ScopedLock ml(&rsm_mutex);
   return primary == cfg->myaddr() && !inviewchange;
 }
-
 
 // Testing server
 
 // Simulate partitions
 
 // assumes caller holds rsm_mutex
-void
-rsm::net_repair_wo(bool heal)
+void rsm::net_repair_wo(bool heal)
 {
   std::vector<std::string> m;
   m = cfg->get_view(vid_commit);
-  for (unsigned i  = 0; i < m.size(); i++) {
-    if (m[i] != cfg->myaddr()) {
-        handle h(m[i]);
-	tprintf("rsm::net_repair_wo: %s %d\n", m[i].c_str(), heal);
-	if (h.safebind()) h.safebind()->set_reachable(heal);
+  for (unsigned i = 0; i < m.size(); i++)
+  {
+    if (m[i] != cfg->myaddr())
+    {
+      handle h(m[i]);
+      tprintf("rsm::net_repair_wo: %s %d\n", m[i].c_str(), heal);
+      if (h.safebind())
+        h.safebind()->set_reachable(heal);
     }
   }
   rsmrpc->set_reachable(heal);
 }
 
-rsm_test_protocol::status 
+rsm_test_protocol::status
 rsm::test_net_repairreq(int heal, int &r)
 {
   ScopedLock ml(&rsm_mutex);
-  tprintf("rsm::test_net_repairreq: %d (dopartition %d, partitioned %d)\n", 
-	 heal, dopartition, partitioned);
-  if (heal) {
+  tprintf("rsm::test_net_repairreq: %d (dopartition %d, partitioned %d)\n",
+          heal, dopartition, partitioned);
+  if (heal)
+  {
     net_repair_wo(heal);
     partitioned = false;
-  } else {
+  }
+  else
+  {
     dopartition = true;
     partitioned = false;
   }
@@ -529,28 +643,28 @@ rsm::test_net_repairreq(int heal, int &r)
 
 // simulate failure at breakpoint 1 and 2
 
-void 
-rsm::breakpoint1()
+void rsm::breakpoint1()
 {
-  if (break1) {
+  if (break1)
+  {
     tprintf("Dying at breakpoint 1 in rsm!\n");
     exit(1);
   }
 }
 
-void 
-rsm::breakpoint2()
+void rsm::breakpoint2()
 {
-  if (break2) {
+  if (break2)
+  {
     tprintf("Dying at breakpoint 2 in rsm!\n");
     exit(1);
   }
 }
 
-void 
-rsm::partition1()
+void rsm::partition1()
 {
-  if (dopartition) {
+  if (dopartition)
+  {
     net_repair_wo(false);
     dopartition = false;
     partitioned = true;
@@ -563,13 +677,13 @@ rsm::breakpointreq(int b, int &r)
   r = rsm_test_protocol::OK;
   ScopedLock ml(&rsm_mutex);
   tprintf("rsm::breakpointreq: %d\n", b);
-  if (b == 1) break1 = true;
-  else if (b == 2) break2 = true;
-  else if (b == 3 || b == 4) cfg->breakpoint(b);
-  else r = rsm_test_protocol::ERR;
+  if (b == 1)
+    break1 = true;
+  else if (b == 2)
+    break2 = true;
+  else if (b == 3 || b == 4)
+    cfg->breakpoint(b);
+  else
+    r = rsm_test_protocol::ERR;
   return r;
 }
-
-
-
-
