@@ -107,7 +107,19 @@ rsm_state_transfer.h：这可能是一个提供了状态同步相关功能的代
 2.
 
 ### RSM without failures
+1.通过invoke mutex 确保请求在副本上按顺序执行
+2.服务器调用retry，rovoke的时候检查是不是主节点，只有master才能与客户端通信
 
 ### Cope with Backup Failures and Implement state transfer
+1.一旦有新节点加入或者节点失败就会启动paxos决出新的view
+2.调用rsm的commit_change方法，inviewchange = true
+3.节点还需要要恢复RSM状态，recovery线程
+4.回复结束 inviewchange = false
+
+#### Recovery
+1.revovery()函数
+2.statetransfer
 
 ### Cope with Primary Failures
+1.使用序列号处理重复请求（部分副本执行了请求，但是主节点没有执行直接故障了）
+2.客户端按时重试（避免请求因为崩溃而丢失例如revoke，retry）
