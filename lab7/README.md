@@ -102,6 +102,10 @@ rsm_state_transfer.h：这可能是一个提供了状态同步相关功能的代
 4.主服务器在本地执行请求，并将结果回复给客户端。
 ```
 
+### Step One: Replicable caching lock server
+1.因为所有的lockserver前有一层rsm，且只有主节点处理请求，所以同一时间只能处理有一个持有invoke mutex，为了避免死锁，这里使用后台线程处理rpc请求（fifo）
+2.
+
 ### RSM without failures
 
 ### Cope with Backup Failures and Implement state transfer
